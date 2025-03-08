@@ -156,7 +156,13 @@ input[type="text"] {
     height: 50px;
     animation: spin 2s linear infinite;
 }
-
+.api-notice {
+    background-color: #f8f9fa;
+    border-left: 4px solid #ffc107;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
