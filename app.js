@@ -239,7 +239,7 @@ function generateGenreStats(tracksWithGenres) {
 }
 // Display the results with proper error handling
 function displayResults(playlistData, tracksWithGenres, genreStats) {
-    // Show the results container
+    console.log("Starting displayResults function");
     resultsContainer.classList.remove('hidden');
     
     // Display playlist info
@@ -271,9 +271,9 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Display Genre Similarity Expansion (doesn't need API)
     displayGenreSimilarityExpansion(genreStats.topGenres.map(g => g.genre));
     
-    // Get track IDs for audio features - limit to 50 tracks to avoid rate limits
-    const trackIds = tracksWithGenres.map(track => track.id).slice(0, 50);
-    
+    // Get track IDs for audio features - limit to just 5 tracks to avoid rate limits
+    const trackIds = tracksWithGenres.map(track => track.id).slice(0, 5);
+    console.log(`Processing ${trackIds.length} tracks for audio features`);
     // Show missing genres with error handling
     const missingGenresContainer = document.getElementById('missing-genres-container');
     findMissingGenres(genreStats.allGenres.map(g => g.genre))
@@ -471,7 +471,7 @@ function displayTrackGenres(tracks) {
         trackGenresList.appendChild(trackCard);
     });
 }
-// Get audio features one track at a time (since the batch endpoint is deprecated)
+// Get audio features for just 5 tracks to avoid rate limits
 async function getAudioFeatures(trackIds) {
     if (!trackIds || trackIds.length === 0) {
         throw new Error('No track IDs provided for audio features');
@@ -483,36 +483,39 @@ async function getAudioFeatures(trackIds) {
     }
     
     const audioFeatures = {};
+    // Only process the first 5 tracks to dramatically reduce API calls
+    const tracksToProcess = Math.min(trackIds.length, 5);
     
-    // Process tracks in smaller batches to avoid overloading
-    for (let i = 0; i < Math.min(trackIds.length, 50); i++) {
+    for (let i = 0; i < tracksToProcess; i++) {
         try {
             const trackId = trackIds[i];
+            console.log(`Fetching audio features for track ${i+1}/${tracksToProcess}: ${trackId}`);
+            
             const response = await fetch(`https://api.spotify.com/v1/audio-features/${trackId}`, {
                 headers: { 'Authorization': `Bearer ${accessToken}` }
             });
             
             if (!response.ok) {
+                console.error(`API response not OK: ${response.status} ${response.statusText}`);
                 if (response.status === 401) {
                     localStorage.removeItem('spotify_access_token');
                     throw new Error('Authentication failed. Please log in again.');
                 }
-                console.warn(`Failed to get audio features for track ${trackId}: ${response.status}`);
-                continue; // Skip this track but continue with others
+                throw new Error(`API error: ${response.status} ${response.statusText}`);
             }
             
             const feature = await response.json();
             if (feature && feature.id) {
                 audioFeatures[feature.id] = feature;
             }
+            
+            // Add a significant delay between requests (500ms)
+            if (i < tracksToProcess - 1) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
         } catch (error) {
-            console.warn(`Error processing track: ${error.message}`);
-            // Continue with other tracks
-        }
-        
-        // Add a small delay to avoid rate limits
-        if (i < trackIds.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            console.error(`Error with track: ${error.message}`);
+            // If we fail with one track, try the next one
         }
     }
     
@@ -522,7 +525,6 @@ async function getAudioFeatures(trackIds) {
     
     return audioFeatures;
 }
-
 function createAudioFeatureCharts(tracksWithFeatures) {
     // Energy vs Danceability scatter plot
     createEnergyDanceabilityChart(tracksWithFeatures);
@@ -1130,4 +1132,52 @@ function displayGenreSimilarityExpansion(mainGenres) {
     if (!hasRecommendations) {
         container.innerHTML = '<p>No similar genre recommendations found for your top genres.</p>';
     }
+}
+// Debug function to check token
+function debugToken() {
+    const token = localStorage.getItem('spotify_access_token');
+    if (!token) {
+        alert('No token found! Please login again.');
+        return;
+    }
+    
+    const tokenParts = token.split('.');
+    if (tokenParts.length < 2) {
+        alert(`Token looks unusual: ${token.substring(0, 10)}...`);
+        return;
+    }
+    
+    // Check token expiration
+    try {
+        const payload = JSON.parse(atob(tokenParts[1]));
+        const expiry = payload.exp * 1000; // convert to milliseconds
+        const now = Date.now();
+        const timeLeft = expiry - now;
+        
+        if (timeLeft < 0) {
+            alert('Token has expired! Please login again.');
+        } else {
+            alert(`Token is valid for ${Math.round(timeLeft/60000)} more minutes.`);
+        }
+    } catch (e) {
+        // For Spotify tokens which might not be decodable JWT tokens
+        alert('Token exists but could not determine expiration. Try logging in again if you have issues.');
+    }
+    
+    // Try a simple API call to check token validity
+    fetch('https://api.spotify.com/v1/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error(`API responded with status: ${response.status}`);
+    })
+    .then(data => {
+        alert(`API check successful! Logged in as: ${data.display_name}`);
+    })
+    .catch(error => {
+        alert(`API check failed: ${error.message}`);
+    });
 }
