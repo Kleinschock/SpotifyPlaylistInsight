@@ -256,6 +256,49 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Create bar chart for top genres
     createGenreBarChart(genreStats.topGenres);
     
+    // Get track IDs for audio features
+    const trackIds = tracksWithGenres.map(track => track.id);
+    
+    // Create the Genre Network Visualization
+    createGenreNetworkChart(tracksWithGenres);
+    
+    // Setup Genre Radio buttons
+    setupGenreRadioButtons(genreStats.topGenres);
+    
+    // Create Release Year Analysis
+    createReleaseYearChart(tracksWithGenres);
+    
+    // Display Genre Similarity Expansion
+    displayGenreSimilarityExpansion(genreStats.topGenres.map(g => g.genre));
+    
+    // Get missing genres
+    findMissingGenres(genreStats.allGenres.map(g => g.genre))
+        .then(missingGenres => {
+            displayMissingGenres(missingGenres);
+        })
+        .catch(error => {
+            console.error('Error displaying missing genres:', error);
+        });
+    
+    // Get audio features and create visualizations
+    getAudioFeatures(trackIds)
+        .then(audioFeatures => {
+            // Combine tracks with their audio features
+            const tracksWithAudioFeatures = tracksWithGenres.map(track => ({
+                ...track,
+                audioFeatures: audioFeatures[track.id] || {}
+            }));
+            
+            // Create audio feature charts
+            createAudioFeatureCharts(tracksWithAudioFeatures);
+            
+            // Create mood trajectory visualization
+            createMoodJourneyChart(tracksWithAudioFeatures);
+        })
+        .catch(error => {
+            console.error('Error creating audio feature charts:', error);
+        });
+    
     // Display track list with genres
     displayTrackGenres(tracksWithGenres);
     
@@ -403,4 +446,642 @@ function displayTrackGenres(tracks) {
         
         trackGenresList.appendChild(trackCard);
     });
+}
+// 1. Audio Feature Analysis Dashboard
+async function getAudioFeatures(trackIds) {
+    const accessToken = localStorage.getItem('spotify_access_token');
+    const audioFeatures = {};
+    
+    for (let i = 0; i < trackIds.length; i += 100) {
+        const batch = trackIds.slice(i, i + 100);
+        const response = await fetch(`https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to get audio features: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        data.audio_features.forEach(feature => {
+            if (feature) audioFeatures[feature.id] = feature;
+        });
+    }
+    
+    return audioFeatures;
+}
+
+function createAudioFeatureCharts(tracksWithFeatures) {
+    // Energy vs Danceability scatter plot
+    createEnergyDanceabilityChart(tracksWithFeatures);
+    
+    // Tempo histogram
+    createTempoChart(tracksWithFeatures);
+    
+    // Acousticness vs Instrumentalness
+    createAcousticInstrumentalChart(tracksWithFeatures);
+    
+    // Radar chart of average features
+    createFeaturesRadarChart(tracksWithFeatures);
+}
+
+function createEnergyDanceabilityChart(tracks) {
+    const ctx = document.getElementById('energy-dance-chart').getContext('2d');
+    
+    // Extract data points
+    const data = tracks.map(track => ({
+        x: track.audioFeatures.danceability,
+        y: track.audioFeatures.energy,
+        r: 8,
+        trackName: track.name,
+        artist: track.artists[0].name
+    }));
+    
+    if (window.energyDanceChart) {
+        window.energyDanceChart.destroy();
+    }
+    
+    window.energyDanceChart = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+            datasets: [{
+                label: 'Tracks',
+                data: data,
+                backgroundColor: 'rgba(29, 185, 84, 0.6)',
+                borderColor: 'rgba(29, 185, 84, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Danceability'
+                    },
+                    min: 0,
+                    max: 1
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Energy'
+                    },
+                    min: 0,
+                    max: 1
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const point = context.raw;
+                            return [
+                                `${point.trackName} - ${point.artist}`,
+                                `Danceability: ${point.x.toFixed(2)}`,
+                                `Energy: ${point.y.toFixed(2)}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createTempoChart(tracks) {
+    const ctx = document.getElementById('tempo-chart').getContext('2d');
+    
+    // Group tempos into ranges
+    const tempoBins = {};
+    const binSize = 10; // Group by 10 BPM intervals
+    
+    tracks.forEach(track => {
+        const tempo = track.audioFeatures.tempo;
+        const bin = Math.floor(tempo / binSize) * binSize;
+        tempoBins[bin] = (tempoBins[bin] || 0) + 1;
+    });
+    
+    // Convert to sorted arrays for chart
+    const bins = Object.keys(tempoBins).sort((a, b) => a - b);
+    const counts = bins.map(bin => tempoBins[bin]);
+    
+    if (window.tempoChart) {
+        window.tempoChart.destroy();
+    }
+    
+    window.tempoChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: bins.map(bin => `${bin}-${parseInt(bin) + binSize} BPM`),
+            datasets: [{
+                label: 'Number of Tracks',
+                data: counts,
+                backgroundColor: 'rgba(29, 185, 84, 0.6)',
+                borderColor: 'rgba(29, 185, 84, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Tracks'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Tempo (BPM)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createAcousticInstrumentalChart(tracks) {
+    const ctx = document.getElementById('acoustic-instrument-chart').getContext('2d');
+    
+    // Extract data points
+    const data = tracks.map(track => ({
+        x: track.audioFeatures.acousticness,
+        y: track.audioFeatures.instrumentalness,
+        r: 8,
+        trackName: track.name,
+        artist: track.artists[0].name
+    }));
+    
+    if (window.acousticChart) {
+        window.acousticChart.destroy();
+    }
+    
+    window.acousticChart = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+            datasets: [{
+                label: 'Tracks',
+                data: data,
+                backgroundColor: 'rgba(29, 185, 84, 0.6)',
+                borderColor: 'rgba(29, 185, 84, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Acousticness'
+                    },
+                    min: 0,
+                    max: 1
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Instrumentalness'
+                    },
+                    min: 0,
+                    max: 1
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const point = context.raw;
+                            return [
+                                `${point.trackName} - ${point.artist}`,
+                                `Acousticness: ${point.x.toFixed(2)}`,
+                                `Instrumentalness: ${point.y.toFixed(2)}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createFeaturesRadarChart(tracks) {
+    const ctx = document.getElementById('features-radar-chart').getContext('2d');
+    
+    // Calculate averages for each feature
+    const features = [
+        'danceability', 'energy', 'acousticness', 
+        'instrumentalness', 'liveness', 'valence'
+    ];
+    
+    const averages = {};
+    features.forEach(feature => {
+        const sum = tracks.reduce((total, track) => 
+            total + track.audioFeatures[feature], 0);
+        averages[feature] = sum / tracks.length;
+    });
+    
+    if (window.featuresRadarChart) {
+        window.featuresRadarChart.destroy();
+    }
+    
+    window.featuresRadarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: [
+                'Danceability', 'Energy', 'Acousticness', 
+                'Instrumentalness', 'Liveness', 'Positivity'
+            ],
+            datasets: [{
+                label: 'Playlist Average',
+                data: [
+                    averages.danceability, 
+                    averages.energy, 
+                    averages.acousticness, 
+                    averages.instrumentalness, 
+                    averages.liveness, 
+                    averages.valence
+                ],
+                backgroundColor: 'rgba(29, 185, 84, 0.2)',
+                borderColor: 'rgba(29, 185, 84, 1)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(29, 185, 84, 1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            scale: {
+                ticks: {
+                    beginAtZero: true,
+                    max: 1
+                }
+            }
+        }
+    });
+}
+
+// 3. Genre Network Visualization
+function createGenreNetworkChart(tracksWithGenres) {
+    const container = document.getElementById('genre-network');
+    container.innerHTML = ''; // Clear previous visualization
+    
+    // Get all unique genres
+    const allGenres = [...new Set(tracksWithGenres.flatMap(track => track.genres))];
+    
+    // Create nodes for each genre
+    const nodes = allGenres.map(genre => ({ 
+        id: genre, 
+        label: genre, 
+        value: tracksWithGenres.filter(t => t.genres.includes(genre)).length
+    }));
+    
+    // Create edges between genres that appear in the same track
+    const edgesMap = new Map(); // To keep track of edges we've already counted
+    
+    tracksWithGenres.forEach(track => {
+        for (let i = 0; i < track.genres.length; i++) {
+            for (let j = i + 1; j < track.genres.length; j++) {
+                // Create a unique key for this edge
+                const genreA = track.genres[i];
+                const genreB = track.genres[j];
+                const edgeKey = [genreA, genreB].sort().join('--');
+                
+                if (edgesMap.has(edgeKey)) {
+                    const currentValue = edgesMap.get(edgeKey);
+                    edgesMap.set(edgeKey, currentValue + 1);
+                } else {
+                    edgesMap.set(edgeKey, 1);
+                }
+            }
+        }
+    });
+    
+    // Convert our map to the edges array format
+    const edges = Array.from(edgesMap.entries()).map(([key, value]) => {
+        const [from, to] = key.split('--');
+        return { from, to, value };
+    });
+    
+    // Create a simple visualization (for a proper network graph, we'd need a library like vis.js)
+    container.innerHTML = `
+        <div style="padding: 20px; text-align: center; background: #f8f8f8; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <div>
+                <h4>Genre Connections</h4>
+                <p>This visualization shows how ${nodes.length} genres are connected in your playlist.</p>
+                <p>The most common genres: ${nodes.sort((a,b) => b.value - a.value).slice(0,5).map(n => n.label).join(', ')}</p>
+                <p>The strongest connections: ${edges.sort((a,b) => b.value - a.value).slice(0,3).map(e => `${e.from} ↔ ${e.to}`).join(', ')}</p>
+            </div>
+        </div>
+    `;
+}
+
+// 4. "Missing Genres" Finder
+async function findMissingGenres(existingGenres) {
+    const accessToken = localStorage.getItem('spotify_access_token');
+    
+    try {
+        // Get available genre seeds from Spotify
+        const response = await fetch('https://api.spotify.com/v1/recommendations/available-genre-seeds', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to get available genres: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const availableGenres = data.genres;
+        
+        // Normalize existing genres (lowercase for comparison)
+        const normalizedExistingGenres = existingGenres.map(g => g.toLowerCase());
+        
+        // Find similar but missing genres using some heuristics
+        const missingGenres = availableGenres.filter(genre => {
+            // Skip genres that are already in the playlist
+            if (normalizedExistingGenres.includes(genre.toLowerCase())) {
+                return false;
+            }
+            
+            // Check if this genre might be similar to existing ones
+            for (const existingGenre of normalizedExistingGenres) {
+                // If it contains part of an existing genre or vice versa
+                if (genre.includes(existingGenre) || existingGenre.includes(genre)) {
+                    return true;
+                }
+                
+                // Check for similar words
+                const genreWords = genre.split(/\s+|-/);
+                const existingWords = existingGenre.split(/\s+|-/);
+                
+                for (const word of genreWords) {
+                    if (word.length > 3 && existingWords.some(w => w === word)) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        });
+        
+        return missingGenres;
+    } catch (error) {
+        console.error('Error finding missing genres:', error);
+        return [];
+    }
+}
+
+function displayMissingGenres(missingGenres) {
+    const container = document.getElementById('missing-genres-list');
+    container.innerHTML = '';
+    
+    if (missingGenres.length === 0) {
+        container.innerHTML = '<p>No additional genre recommendations found.</p>';
+        return;
+    }
+    
+    missingGenres.forEach(genre => {
+        const genreTag = document.createElement('span');
+        genreTag.className = 'genre-tag';
+        genreTag.textContent = genre;
+        genreTag.addEventListener('click', () => {
+            window.open(`https://open.spotify.com/search/${encodeURIComponent(genre)}`, '_blank');
+        });
+        
+        container.appendChild(genreTag);
+    });
+}
+
+// 5. Mood Trajectory Visualization
+function createMoodJourneyChart(tracks) {
+    const ctx = document.getElementById('mood-journey-chart').getContext('2d');
+    
+    // Sort tracks by position in playlist (assuming they're already in order)
+    const labels = tracks.map((t, i) => `Track ${i+1}`);
+    const energy = tracks.map(t => t.audioFeatures.energy);
+    const valence = tracks.map(t => t.audioFeatures.valence);
+    
+    if (window.moodJourneyChart) {
+        window.moodJourneyChart.destroy();
+    }
+    
+    window.moodJourneyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Energy',
+                    data: energy,
+                    borderColor: '#ff6384',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Positivity (Valence)',
+                    data: valence,
+                    borderColor: '#36a2eb',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Emotional Journey of Your Playlist'
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const trackIndex = context.dataIndex;
+                            const track = tracks[trackIndex];
+                            return `${track.name} - ${track.artists[0].name}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: 0,
+                    max: 1,
+                    title: {
+                        display: true,
+                        text: 'Intensity'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Playlist Progression'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 6. One-Click Genre Radio Generator
+function setupGenreRadioButtons(genres) {
+    const container = document.getElementById('genre-radio-buttons');
+    container.innerHTML = '';
+    
+    // Use only the top 5 genres
+    const topGenres = genres.slice(0, 5);
+    
+    topGenres.forEach(genre => {
+        const button = document.createElement('button');
+        button.className = 'genre-radio-button';
+        button.textContent = `${genre.genre} Radio`;
+        button.addEventListener('click', () => createGenreRadio(genre.genre));
+        container.appendChild(button);
+    });
+}
+
+async function createGenreRadio(genre) {
+    // Open Spotify's genre radio in a new tab
+    window.open(`https://open.spotify.com/search/${encodeURIComponent(genre)}/playlists`, '_blank');
+}
+
+// 7. Release Year Analysis
+function createReleaseYearChart(tracks) {
+    const yearCounts = {};
+    
+    tracks.forEach(track => {
+        if (track.album && track.album.release_date) {
+            // Extract the year from the release date
+            const year = track.album.release_date.substring(0, 4);
+            yearCounts[year] = (yearCounts[year] || 0) + 1;
+        }
+    });
+    
+    // Convert to arrays for Chart.js
+    const years = Object.keys(yearCounts).sort();
+    const counts = years.map(year => yearCounts[year]);
+    
+    const ctx = document.getElementById('release-year-chart').getContext('2d');
+    
+    if (window.releaseYearChart) {
+        window.releaseYearChart.destroy();
+    }
+    
+    window.releaseYearChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: years,
+            datasets: [{
+                label: 'Tracks per Year',
+                data: counts,
+                backgroundColor: 'rgba(29, 185, 84, 0.6)',
+                borderColor: 'rgba(29, 185, 84, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Tracks'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Release Year'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 10. Genre Similarity Expansion
+function displayGenreSimilarityExpansion(mainGenres) {
+    const container = document.getElementById('similar-genres-list');
+    container.innerHTML = '';
+    
+    // Generic genre similarity mapping
+    const genreSimilarity = {
+        'pop': ['dance pop', 'electropop', 'pop rock', 'indie pop', 'synth pop'],
+        'rock': ['alternative rock', 'classic rock', 'indie rock', 'hard rock', 'punk rock'],
+        'hip hop': ['rap', 'trap', 'conscious hip hop', 'southern hip hop', 'alternative hip hop'],
+        'r&b': ['soul', 'contemporary r&b', 'neo soul', 'urban contemporary', 'funk'],
+        'electronic': ['edm', 'house', 'techno', 'trance', 'dubstep'],
+        'dance': ['dance pop', 'electro house', 'disco', 'dance rock', 'eurodance'],
+        'indie': ['indie pop', 'indie rock', 'indie folk', 'indietronica', 'chamber pop'],
+        'alternative': ['alternative rock', 'indie rock', 'post-punk', 'new wave', 'grunge'],
+        'metal': ['heavy metal', 'death metal', 'thrash metal', 'black metal', 'power metal'],
+        'folk': ['folk rock', 'indie folk', 'contemporary folk', 'americana', 'singer-songwriter'],
+        'jazz': ['smooth jazz', 'bebop', 'fusion', 'cool jazz', 'swing'],
+        'classical': ['contemporary classical', 'baroque', 'romantic', 'opera', 'symphony'],
+        'reggae': ['dancehall', 'reggae fusion', 'dub', 'roots reggae', 'ska'],
+        'country': ['contemporary country', 'country rock', 'country pop', 'outlaw country', 'americana'],
+        'blues': ['electric blues', 'chicago blues', 'soul blues', 'delta blues', 'jazz blues'],
+        'latin': ['reggaeton', 'latin pop', 'salsa', 'bachata', 'latin rock'],
+        'funk': ['funk rock', 'p-funk', 'disco', 'soul funk', 'electro funk'],
+        'soul': ['neo soul', 'southern soul', 'northern soul', 'motown', 'psychedelic soul'],
+        'disco': ['nu-disco', 'eurodisco', 'italo-disco', 'funk', 'dance'],
+        'house': ['deep house', 'tech house', 'progressive house', 'electro house', 'acid house'],
+        'techno': ['tech house', 'minimal techno', 'detroit techno', 'acid techno', 'hard techno'],
+        'trance': ['progressive trance', 'uplifting trance', 'vocal trance', 'psychedelic trance', 'tech trance'],
+        'ambient': ['chillout', 'downtempo', 'drone', 'dark ambient', 'ambient electronic'],
+        'drum and bass': ['liquid drum and bass', 'jungle', 'darkstep', 'neurofunk', 'breakbeat'],
+        'dubstep': ['brostep', 'chillstep', 'future garage', 'post-dubstep', 'riddim'],
+        'punk': ['hardcore punk', 'post-punk', 'pop punk', 'skate punk', 'punk rock']
+    };
+    
+    // Get the top 5 genres for similarity expansion
+    const topGenres = mainGenres.slice(0, 5);
+    let hasRecommendations = false;
+    
+    topGenres.forEach(genreObj => {
+        const genre = genreObj.toLowerCase();
+        let similarGenres = [];
+        
+        // First look for exact matches
+        if (genreSimilarity[genre]) {
+            similarGenres = genreSimilarity[genre];
+        } else {
+            // If no exact match, look for partial matches
+            for (const key of Object.keys(genreSimilarity)) {
+                if (genre.includes(key) || key.includes(genre)) {
+                    similarGenres = genreSimilarity[key];
+                    break;
+                }
+            }
+        }
+        
+        if (similarGenres.length > 0) {
+            hasRecommendations = true;
+            
+            const card = document.createElement('div');
+            card.className = 'similar-genre-card';
+            
+            card.innerHTML = `
+                <h4>${genreObj}</h4>
+                <ul>
+                    ${similarGenres.map(similar => `
+                        <li><a href="https://open.spotify.com/search/${encodeURIComponent(similar)}" 
+                            target="_blank" rel="noopener">${similar}</a></li>
+                    `).join('')}
+                </ul>
+            `;
+            
+            container.appendChild(card);
+        }
+    });
+    
+    if (!hasRecommendations) {
+        container.innerHTML = '<p>No similar genre recommendations found for your top genres.</p>';
+    }
 }

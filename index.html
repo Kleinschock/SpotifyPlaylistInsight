@@ -36,6 +36,7 @@
         
         <div id="results-container" class="hidden">
             <h2>Playlist Analysis</h2>
+            
             <div id="playlist-info"></div>
             
             <div id="genre-chart-container">
@@ -51,6 +52,68 @@
             <div id="track-genres-container">
                 <h3>Tracks by Genre</h3>
                 <div id="track-genres-list"></div>
+            </div>
+                        <!-- Audio Feature Analysis Dashboard -->
+            <div id="audio-features-container">
+                <h3>Audio Features Analysis</h3>
+                <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Energy vs. Danceability</h4>
+                    <canvas id="energy-dance-chart"></canvas>
+                </div>
+                <div class="feature-card">
+                    <h4>Tempo Distribution</h4>
+                    <canvas id="tempo-chart"></canvas>
+                </div>
+                <div class="feature-card">
+                    <h4>Acousticness vs. Instrumentalness</h4>
+                    <canvas id="acoustic-instrument-chart"></canvas>
+                </div>
+                <div class="feature-card">
+                    <h4>Average Audio Features</h4>
+                    <canvas id="features-radar-chart"></canvas>
+                </div>
+                </div>
+            </div>
+            
+            <!-- Mood Trajectory Visualization -->
+            <div id="mood-trajectory-container">
+                <h3>Mood Trajectory</h3>
+                <p>The emotional journey of your playlist from start to finish</p>
+                <canvas id="mood-journey-chart"></canvas>
+            </div>
+            
+            <!-- Genre Network Visualization -->
+            <div id="genre-network-container">
+                <h3>Genre Network Visualization</h3>
+                <p>How genres in your playlist connect to each other</p>
+                <div id="genre-network"></div>
+            </div>
+            
+            <!-- Release Year Analysis -->
+            <div id="release-year-container">
+                <h3>Release Year Analysis</h3>
+                <canvas id="release-year-chart"></canvas>
+            </div>
+            
+            <!-- Missing Genres Finder -->
+            <div id="missing-genres-container">
+                <h3>Discover Missing Genres</h3>
+                <p>Genres that would complement your playlist based on what's already there</p>
+                <div id="missing-genres-list" class="genre-tag-container"></div>
+            </div>
+            
+            <!-- One-Click Genre Radio Generator -->
+            <div id="genre-radio-container">
+                <h3>Explore Similar Tracks by Genre</h3>
+                <div id="genre-radio-buttons" class="genre-buttons-container"></div>
+            </div>
+            
+            <!-- Genre Similarity Expansion -->
+            <div id="genre-similarity-container">
+                <h3>Similar Genres Expansion</h3>
+                <p>Try adding these related genres to enhance your playlist</p>
+                <div id="similar-genres-list"></div>
             </div>
         </div>
     </div>
