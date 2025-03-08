@@ -28,6 +28,7 @@
                 <li>Click "Login with Spotify" to connect your account</li>
                 <li>Enter a Spotify playlist URL (e.g., https://open.spotify.com/playlist/37i9dQZEVXcJZyENOWUFo7) or playlist ID</li>
                 <li>Click "Analyze Playlist" to see the genre breakdown</li>
+                <li>Click on any genre in the charts or genre tags to filter tracks by genre</li>
             </ol>
             <div class="api-notice">
                 <p><strong>Note:</strong> Some advanced features may be limited due to changes in Spotify's API. The core genre analysis will work for all playlists.</p>
@@ -59,11 +60,6 @@
                         <div class="stat-label">Total Playtime</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">🎭</div>
-                        <div class="stat-value" id="artist-diversity">-</div>
-                        <div class="stat-label">Artist Diversity</div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-icon">🎵</div>
                         <div class="stat-value" id="total-tracks">-</div>
                         <div class="stat-label">Total Tracks</div>
@@ -73,11 +69,13 @@
             
             <div id="genre-chart-container">
                 <h3>Genre Distribution (Pie Chart)</h3>
+                <p class="chart-tip">Click on a genre to filter tracks</p>
                 <canvas id="genre-pie-chart"></canvas>
             </div>
             
             <div id="genre-bar-chart-container">
                 <h3>Top Genres (Bar Chart)</h3>
+                <p class="chart-tip">Click on a bar to filter tracks</p>
                 <canvas id="genre-bar-chart"></canvas>
             </div>
             
@@ -123,6 +121,7 @@
             
             <div id="track-genres-container">
                 <h3>Tracks by Genre</h3>
+                <!-- Filter notice will be inserted here -->
                 <div id="track-genres-list"></div>
             </div>
         </div>

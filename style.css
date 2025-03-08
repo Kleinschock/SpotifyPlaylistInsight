@@ -558,7 +558,65 @@ input[type="text"] {
         align-items: center;
     }
 }
+/* Add styles for filter functionality */
+.filter-notice {
+    background-color: #f1f8ff;
+    border-left: 4px solid #1DB954;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 5px;
+}
 
+.clear-filter-button {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.clear-filter-button:hover {
+    background-color: #e9ecef;
+}
+
+.track-genre {
+    display: inline-block;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin: 2px;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.track-genre:hover {
+    transform: scale(1.1);
+    opacity: 0.9;
+}
+
+.chart-tip {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    font-style: italic;
+    margin-top: -10px;
+    margin-bottom: 10px;
+}
+
+/* Simplified Playlist Statistics Dashboard Styles */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
 @media (max-width: 768px) {
     .container {
         width: 95%;

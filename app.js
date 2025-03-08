@@ -416,8 +416,7 @@ function setupSimilarArtistsDiscovery(tracks) {
         buttonsContainer.appendChild(button);
     });
 }
-
-// Handle similar artist button click
+// Handle similar artist button click with improved error handling
 async function handleSimilarArtistClick(event) {
     const artistId = event.target.dataset.artistId;
     const artistName = event.target.dataset.artistName;
@@ -430,8 +429,11 @@ async function handleSimilarArtistClick(event) {
         // Fetch similar artists
         const similarArtists = await fetchSimilarArtists(artistId);
         
-        if (!similarArtists.length) {
-            resultsContainer.innerHTML = `<p>No similar artists found for ${artistName}.</p>`;
+        if (!similarArtists || similarArtists.length === 0) {
+            resultsContainer.innerHTML = `
+                <p>No similar artists found for ${artistName}.</p>
+                <p class="api-notice">This feature may be limited due to Spotify API restrictions.</p>
+            `;
             return;
         }
         
@@ -456,7 +458,7 @@ async function handleSimilarArtistClick(event) {
                 <img src="${imageUrl}" alt="${artist.name}">
                 <div class="similar-artist-info">
                     <h5>${artist.name}</h5>
-                    <p>${artist.genres.slice(0, 2).join(', ')}</p>
+                    <p>${artist.genres && artist.genres.length > 0 ? artist.genres.slice(0, 2).join(', ') : 'No genres found'}</p>
                     <button onclick="window.open('https://open.spotify.com/artist/${artist.id}', '_blank')">
                         Open in Spotify
                     </button>
@@ -467,30 +469,50 @@ async function handleSimilarArtistClick(event) {
         });
     } catch (error) {
         console.error('Error fetching similar artists:', error);
-        resultsContainer.innerHTML = `<p class="error-message">Error loading similar artists: ${error.message}</p>`;
+        resultsContainer.innerHTML = `
+            <p class="error-message">Error loading similar artists: ${error.message}</p>
+            <p class="api-notice">This feature may be limited due to Spotify API restrictions.</p>
+        `;
     }
 }
-
-// Fetch similar artists from Spotify API
+// Fetch similar artists from Spotify API with better error handling
 async function fetchSimilarArtists(artistId) {
     const accessToken = localStorage.getItem('spotify_access_token');
     if (!accessToken) {
         throw new Error('No access token found');
     }
     
-    const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/related-artists`, {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
+    try {
+        const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/related-artists`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+        
+        if (response.status === 404) {
+            // Handle 404 errors specifically (API endpoint might be changed or restricted)
+            return []; // Return empty array to gracefully handle this case
         }
-    });
-    
-    if (!response.ok) {
-        throw new Error(`Failed to fetch similar artists: ${response.statusText}`);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Token expired
+                localStorage.removeItem('spotify_access_token');
+                throw new Error('Session expired. Please login again.');
+            }
+            throw new Error(`Request failed with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.artists.slice(0, 8); // Return top 8 similar artists
+    } catch (error) {
+        console.error('Error in fetchSimilarArtists:', error);
+        
+        // Return empty array to avoid breaking the UI
+        return [];
     }
-    
-    const data = await response.json();
-    return data.artists.slice(0, 8); // Return top 8 similar artists
 }
+
 
 // Calculate total duration of all tracks
 function calculateTotalDuration(tracks) {
@@ -563,7 +585,40 @@ function createGenrePieChart(topGenres) {
                     position: 'right',
                     labels: {
                         padding: 20,
-                        boxWidth: 12
+                        boxWidth: 12,
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            if (data.labels.length && data.datasets.length) {
+                                return data.labels.map(function(label, i) {
+                                    const meta = chart.getDatasetMeta(0);
+                                    const style = meta.controller.getStyle(i);
+                                    
+                                    return {
+                                        text: label,
+                                        fillStyle: style.backgroundColor,
+                                        strokeStyle: style.borderColor,
+                                        lineWidth: style.borderWidth,
+                                        hidden: !chart.getDataVisibility(i),
+                                        index: i,
+                                        // Add data for filtering
+                                        genre: label
+                                    };
+                                });
+                            }
+                            return [];
+                        }
+                    },
+                    onClick: function(e, legendItem, legend) {
+                        // Toggle chart segment visibility
+                        const index = legendItem.index;
+                        const meta = legend.chart.getDatasetMeta(0);
+                        const isHidden = meta.data[index].hidden || false;
+                        
+                        meta.data[index].hidden = !isHidden;
+                        legend.chart.update();
+                        
+                        // Filter tracks by the selected genre
+                        filterTracksByGenre(legendItem.genre);
                     }
                 },
                 tooltip: {
@@ -578,7 +633,57 @@ function createGenrePieChart(topGenres) {
         }
     });
 }
-
+// Filter tracks by genre
+function filterTracksByGenre(selectedGenre) {
+    // Get all track cards
+    const trackCards = document.querySelectorAll('.track-card');
+    
+    // If selectedGenre is null or undefined, show all tracks
+    if (!selectedGenre) {
+        trackCards.forEach(card => {
+            card.style.display = 'block';
+        });
+        return;
+    }
+    
+    // Otherwise, show only tracks with the selected genre
+    trackCards.forEach(card => {
+        const trackGenres = card.querySelectorAll('.track-genre');
+        let hasGenre = false;
+        
+        trackGenres.forEach(genreSpan => {
+            if (genreSpan.textContent.trim() === selectedGenre) {
+                hasGenre = true;
+            }
+        });
+        
+        card.style.display = hasGenre ? 'block' : 'none';
+    });
+    
+    // Show a message to clear the filter
+    const filterNotice = document.getElementById('filter-notice');
+    if (filterNotice) {
+        filterNotice.textContent = `Showing tracks with genre: ${selectedGenre}`;
+        filterNotice.style.display = 'block';
+    }
+}
+// Clear genre filter
+function clearGenreFilter() {
+    filterTracksByGenre(null);
+    
+    // Reset chart visibility
+    if (window.genreChart) {
+        const meta = window.genreChart.getDatasetMeta(0);
+        meta.data.forEach(d => d.hidden = false);
+        window.genreChart.update();
+    }
+    
+    // Hide the filter notice
+    const filterNotice = document.getElementById('filter-notice');
+    if (filterNotice) {
+        filterNotice.style.display = 'none';
+    }
+}
 // Create a bar chart for genres
 function createGenreBarChart(topGenres) {
     const ctx = document.getElementById('genre-bar-chart').getContext('2d');
@@ -632,11 +737,17 @@ function createGenreBarChart(topGenres) {
                         text: 'Number of Tracks'
                     }
                 }
+            },
+            onClick: function(e, elements) {
+                if (elements && elements.length > 0) {
+                    const index = elements[0].index;
+                    const genre = topGenres[index].genre;
+                    filterTracksByGenre(genre);
+                }
             }
         }
     });
 }
-
 // Generate colors for chart
 function generateColors(count) {
     const colors = [];
@@ -647,9 +758,25 @@ function generateColors(count) {
     return colors;
 }
 
-// Display track list with genres using consistent colors
 function displayTrackGenres(tracks) {
     trackGenresList.innerHTML = '';
+    
+    // Clear filter notice if it exists, or create it
+    let filterNotice = document.getElementById('filter-notice');
+    if (!filterNotice) {
+        filterNotice = document.createElement('div');
+        filterNotice.id = 'filter-notice';
+        filterNotice.className = 'filter-notice';
+        
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear Filter';
+        clearButton.className = 'clear-filter-button';
+        clearButton.addEventListener('click', clearGenreFilter);
+        
+        filterNotice.appendChild(clearButton);
+        document.getElementById('track-genres-container').insertBefore(filterNotice, trackGenresList);
+    }
+    filterNotice.style.display = 'none';
     
     // Map of genres to their colors
     const genreColors = window.genreColors || {};
@@ -676,7 +803,8 @@ function displayTrackGenres(tracks) {
             <div class="track-artist">${track.artists.map(a => a.name).join(', ')}</div>
             <div class="track-genres">
                 ${track.genres.map(genre => `
-                    <span class="track-genre" style="background-color: ${getGenreColor(genre)}">
+                    <span class="track-genre" style="background-color: ${getGenreColor(genre)}" 
+                          onclick="filterTracksByGenre('${genre}')">
                         ${genre}
                     </span>
                 `).join(' ')}
@@ -686,7 +814,6 @@ function displayTrackGenres(tracks) {
         trackGenresList.appendChild(trackCard);
     });
 }
-
 // 6. One-Click Genre Radio Generator
 function setupGenreRadioButtons(genres) {
     const container = document.getElementById('genre-radio-buttons');
@@ -918,20 +1045,16 @@ function debugToken() {
 function displayPlaylistStatistics(tracks) {
     // Calculate statistics
     const totalDuration = calculateTotalDuration(tracks);
-    const uniqueArtistsCount = countUniqueArtists(tracks);
     const totalTracks = tracks.length;
     
     // Format statistics for display
     const formattedTotalDuration = formatDuration(totalDuration);
-    const artistDiversity = ((uniqueArtistsCount / totalTracks) * 100).toFixed(0) + '%';
     
     // Update the dashboard with simplified stats
     document.getElementById('total-duration').textContent = formattedTotalDuration;
-    document.getElementById('artist-diversity').textContent = artistDiversity;
     document.getElementById('total-tracks').textContent = totalTracks;
 }
-
-// Update displayResults function to include the modified visualizations
+// Update displayResults function to match the changes
 function displayResults(playlistData, tracksWithGenres, genreStats) {
     resultsContainer.classList.remove('hidden');
     
