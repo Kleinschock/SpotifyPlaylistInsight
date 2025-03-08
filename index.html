@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Playlist Genre Visualizer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading-overlay" class="hidden">
+        <div class="loader"></div>
+    </div>
+    
+    <div class="container">
+        <h1>Spotify Playlist Genre Visualizer</h1>
+        
+        <div id="login-container">
+            <button id="login-button">Login with Spotify</button>
+        </div>
+        
+        <div id="instructions">
+            <h2>How to Use</h2>
+            <ol>
+                <li>Click "Login with Spotify" to connect your account</li>
+                <li>Enter a Spotify playlist URL (e.g., https://open.spotify.com/playlist/37i9dQZEVXcJZyENOWUFo7) or playlist ID</li>
+                <li>Click "Analyze Playlist" to see the genre breakdown</li>
+            </ol>
+            <p>Note: Genre information is derived from artist data and may not be perfectly accurate for all tracks.</p>
+        </div>
+        
+        <div id="playlist-container" class="hidden">
+            <h2>Enter a Spotify Playlist URL or ID:</h2>
+            <input type="text" id="playlist-input" placeholder="https://open.spotify.com/playlist/...">
+            <button id="analyze-button">Analyze Playlist</button>
+        </div>
+        
+        <div id="results-container" class="hidden">
+            <h2>Playlist Analysis</h2>
+            <div id="playlist-info"></div>
+            
+            <div id="genre-chart-container">
+                <h3>Genre Distribution (Pie Chart)</h3>
+                <canvas id="genre-pie-chart"></canvas>
+            </div>
+            
+            <div id="genre-bar-chart-container">
+                <h3>Top Genres (Bar Chart)</h3>
+                <canvas id="genre-bar-chart"></canvas>
+            </div>
+            
+            <div id="track-genres-container">
+                <h3>Tracks by Genre</h3>
+                <div id="track-genres-list"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
