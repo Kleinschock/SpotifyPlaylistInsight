@@ -75,14 +75,21 @@ async function analyzePlaylist() {
         const artistIds = [...new Set(tracks.flatMap(track => track.artists.map(artist => artist.id)))];
         const artistGenres = await getArtistGenres(artistIds);
         
+        // Get audio features (BPM/tempo) for each track
+        const trackIds = tracks.map(track => track.id);
+        const audioFeatures = await getAudioFeatures(trackIds);
+        
         // Assign genres to tracks
         const tracksWithGenres = assignGenresToTracks(tracks, artistGenres);
         
+        // Assign BPM to tracks
+        const tracksWithBPM = assignBPMToTracks(tracksWithGenres, audioFeatures);
+        
         // Generate genre statistics
-        const genreStats = generateGenreStats(tracksWithGenres);
+        const genreStats = generateGenreStats(tracksWithBPM);
         
         // Display the results
-        displayResults(playlistData, tracksWithGenres, genreStats);
+        displayResults(playlistData, tracksWithBPM, genreStats);
     } catch (error) {
         console.error('Error analyzing playlist:', error);
         alert('Error analyzing playlist. Please check the URL and try again.');
@@ -90,7 +97,6 @@ async function analyzePlaylist() {
         hideLoading();
     }
 }
-
 // Show loading indicator
 function showLoading() {
     document.getElementById('loading-overlay').classList.remove('hidden');
@@ -843,6 +849,12 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Display track list with genres
     displayTrackGenres(tracksWithGenres);
     
+    // Setup genre filtering
+    setupGenreFiltering(tracksWithGenres);
+    
+    // Create BPM visualization
+    createBPMVisualization(tracksWithGenres);
+    
     // Create the Genre Network Visualization
     createGenreNetworkChart(tracksWithGenres);
     
@@ -855,7 +867,6 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Display Genre Similarity Expansion
     displayGenreSimilarityExpansion(genreStats.topGenres.map(g => g.genre));
     
-    // NEW FEATURES
     // Display Top Artists Showcase
     displayTopArtistsShowcase(tracksWithGenres);
     
@@ -871,6 +882,7 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Scroll to results
     resultsContainer.scrollIntoView({ behavior: 'smooth' });
 }
+
 // Create a pie chart for genres
 function createGenrePieChart(topGenres) {
     const ctx = document.getElementById('genre-pie-chart').getContext('2d');
@@ -1273,5 +1285,577 @@ function debugToken() {
     .catch(error => {
         alert(`API check failed: ${error.message}`);
     });
+}
+// Fetch audio features (BPM/tempo) for tracks
+async function getAudioFeatures(trackIds) {
+    const accessToken = localStorage.getItem('spotify_access_token');
+    const result = {};
+    
+    // Spotify API allows a maximum of 100 IDs per request
+    for (let i = 0; i < trackIds.length; i += 100) {
+        const batch = trackIds.slice(i, i + 100);
+        const response = await fetch(`https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to get audio features: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        data.audio_features.forEach(features => {
+            if (features) {
+                result[features.id] = features;
+            }
+        });
+    }
+    
+    return result;
+}
+
+// Assign BPM/tempo to tracks
+function assignBPMToTracks(tracks, audioFeatures) {
+    return tracks.map(track => {
+        const features = audioFeatures[track.id];
+        
+        return {
+            ...track,
+            bpm: features ? Math.round(features.tempo) : null,
+            energy: features ? features.energy : null,
+            danceability: features ? features.danceability : null,
+            key: features ? features.key : null,
+            mode: features ? features.mode : null,
+            valence: features ? features.valence : null // happiness/positivity
+        };
+    });
+}
+
+// Get BPM color based on tempo
+function getBPMColor(bpm) {
+    if (!bpm) return '#999'; // default gray for unknown BPM
+    
+    if (bpm <= 90) return 'bpm-range-60-90';
+    if (bpm <= 110) return 'bpm-range-91-110';
+    if (bpm <= 130) return 'bpm-range-111-130';
+    if (bpm <= 150) return 'bpm-range-131-150';
+    return 'bpm-range-151-plus';
+}
+
+// Get BPM description
+function getBPMDescription(bpm) {
+    if (!bpm) return 'Unknown';
+    
+    if (bpm <= 90) return 'Slow';
+    if (bpm <= 110) return 'Medium-Slow';
+    if (bpm <= 130) return 'Medium';
+    if (bpm <= 150) return 'Medium-Fast';
+    return 'Fast';
+}
+
+// Create BPM visualization
+function createBPMVisualization(tracks) {
+    const container = document.getElementById('bpm-container');
+    container.innerHTML = '';
+    
+    // Create view toggle buttons
+    const viewToggle = document.createElement('div');
+    viewToggle.className = 'view-toggle-buttons';
+    viewToggle.innerHTML = `
+        <button id="list-view-button" class="view-toggle-button active">List View</button>
+        <button id="chart-view-button" class="view-toggle-button">Chart View</button>
+    `;
+    container.appendChild(viewToggle);
+    
+    // Create BPM stats
+    const bpmStats = document.createElement('div');
+    bpmStats.className = 'bpm-stats';
+    
+    // Calculate BPM range distribution
+    const bpmRanges = {
+        '60-90 BPM (Slow)': 0,
+        '91-110 BPM (Medium-Slow)': 0,
+        '111-130 BPM (Medium)': 0,
+        '131-150 BPM (Medium-Fast)': 0,
+        '151+ BPM (Fast)': 0,
+        'Unknown': 0
+    };
+    
+    let totalBPM = 0;
+    let tracksWithBPM = 0;
+    
+    tracks.forEach(track => {
+        if (track.bpm) {
+            totalBPM += track.bpm;
+            tracksWithBPM++;
+            
+            if (track.bpm <= 90) {
+                bpmRanges['60-90 BPM (Slow)']++;
+            } else if (track.bpm <= 110) {
+                bpmRanges['91-110 BPM (Medium-Slow)']++;
+            } else if (track.bpm <= 130) {
+                bpmRanges['111-130 BPM (Medium)']++;
+            } else if (track.bpm <= 150) {
+                bpmRanges['131-150 BPM (Medium-Fast)']++;
+            } else {
+                bpmRanges['151+ BPM (Fast)']++;
+            }
+        } else {
+            bpmRanges['Unknown']++;
+        }
+    });
+    
+    const averageBPM = tracksWithBPM > 0 ? Math.round(totalBPM / tracksWithBPM) : 0;
+    
+    // Create BPM stats content
+    bpmStats.innerHTML = `
+        <h4>BPM Analysis <span class="bpm-pulse">♪</span></h4>
+        <p>Average BPM: <strong>${averageBPM}</strong> (${getBPMDescription(averageBPM)})</p>
+        
+        <div class="bpm-range-distribution">
+            ${bpmRanges['60-90 BPM (Slow)'] > 0 ? 
+                `<div class="bpm-range-segment bpm-range-60-90" 
+                     style="width: ${bpmRanges['60-90 BPM (Slow)'] / tracks.length * 100}%;" 
+                     title="60-90 BPM: ${bpmRanges['60-90 BPM (Slow)']} tracks"></div>` : ''}
+            ${bpmRanges['91-110 BPM (Medium-Slow)'] > 0 ? 
+                `<div class="bpm-range-segment bpm-range-91-110" 
+                     style="width: ${bpmRanges['91-110 BPM (Medium-Slow)'] / tracks.length * 100}%;" 
+                     title="91-110 BPM: ${bpmRanges['91-110 BPM (Medium-Slow)']} tracks"></div>` : ''}
+            ${bpmRanges['111-130 BPM (Medium)'] > 0 ? 
+                `<div class="bpm-range-segment bpm-range-111-130" 
+                     style="width: ${bpmRanges['111-130 BPM (Medium)'] / tracks.length * 100}%;" 
+                     title="111-130 BPM: ${bpmRanges['111-130 BPM (Medium)']} tracks"></div>` : ''}
+            ${bpmRanges['131-150 BPM (Medium-Fast)'] > 0 ? 
+                `<div class="bpm-range-segment bpm-range-131-150" 
+                     style="width: ${bpmRanges['131-150 BPM (Medium-Fast)'] / tracks.length * 100}%;" 
+                     title="131-150 BPM: ${bpmRanges['131-150 BPM (Medium-Fast)']} tracks"></div>` : ''}
+            ${bpmRanges['151+ BPM (Fast)'] > 0 ? 
+                `<div class="bpm-range-segment bpm-range-151-plus" 
+                     style="width: ${bpmRanges['151+ BPM (Fast)'] / tracks.length * 100}%;" 
+                     title="151+ BPM: ${bpmRanges['151+ BPM (Fast)']} tracks"></div>` : ''}
+            ${bpmRanges['Unknown'] > 0 ? 
+                `<div class="bpm-range-segment" style="background-color: #ccc; width: ${bpmRanges['Unknown'] / tracks.length * 100}%;" 
+                     title="Unknown BPM: ${bpmRanges['Unknown']} tracks"></div>` : ''}
+        </div>
+        
+        <div class="bpm-legend">
+            <div class="bpm-legend-item">
+                <div class="bpm-legend-color bpm-range-60-90"></div>
+                <span>60-90 (${bpmRanges['60-90 BPM (Slow)']})</span>
+            </div>
+            <div class="bpm-legend-item">
+                <div class="bpm-legend-color bpm-range-91-110"></div>
+                <span>91-110 (${bpmRanges['91-110 BPM (Medium-Slow)']})</span>
+            </div>
+            <div class="bpm-legend-item">
+                <div class="bpm-legend-color bpm-range-111-130"></div>
+                <span>111-130 (${bpmRanges['111-130 BPM (Medium)']})</span>
+            </div>
+            <div class="bpm-legend-item">
+                <div class="bpm-legend-color bpm-range-131-150"></div>
+                <span>131-150 (${bpmRanges['131-150 BPM (Medium-Fast)']})</span>
+            </div>
+            <div class="bpm-legend-item">
+                <div class="bpm-legend-color bpm-range-151-plus"></div>
+                <span>151+ (${bpmRanges['151+ BPM (Fast)']})</span>
+            </div>
+            ${bpmRanges['Unknown'] > 0 ? `
+            <div class="bpm-legend-item">
+                <div class="bpm-legend-color" style="background-color: #ccc;"></div>
+                <span>Unknown (${bpmRanges['Unknown']})</span>
+            </div>` : ''}
+        </div>
+    `;
+    
+    container.appendChild(bpmStats);
+    
+    // Create list view container (default view)
+    const listViewContainer = document.createElement('div');
+    listViewContainer.id = 'bpm-list-view';
+    listViewContainer.className = 'bpm-track-list';
+    
+    // Sort tracks by BPM
+    const sortedTracks = [...tracks].filter(t => t.bpm).sort((a, b) => a.bpm - b.bpm);
+    
+    // Populate list view
+    sortedTracks.forEach(track => {
+        const trackCard = document.createElement('div');
+        trackCard.className = 'track-card';
+        
+        const bpmClass = getBPMColor(track.bpm);
+        
+        trackCard.innerHTML = `
+            <img src="${track.album.images[2]?.url || 'placeholder.png'}" alt="${track.name}">
+            <div class="track-title">${track.name}</div>
+            <div class="track-artist">${track.artists.map(a => a.name).join(', ')}</div>
+            <div class="track-bpm">
+                <span class="bpm-tag ${bpmClass}">${track.bpm} BPM</span>
+                <span>${getBPMDescription(track.bpm)}</span>
+            </div>
+            <div class="bpm-indicator ${bpmClass.replace('range-', '')}"></div>
+        `;
+        
+        listViewContainer.appendChild(trackCard);
+    });
+    
+    // Add tracks with unknown BPM at the end
+    tracks.filter(t => !t.bpm).forEach(track => {
+        const trackCard = document.createElement('div');
+        trackCard.className = 'track-card';
+        
+        trackCard.innerHTML = `
+            <img src="${track.album.images[2]?.url || 'placeholder.png'}" alt="${track.name}">
+            <div class="track-title">${track.name}</div>
+            <div class="track-artist">${track.artists.map(a => a.name).join(', ')}</div>
+            <div class="track-bpm">
+                <span class="bpm-tag" style="background-color: #999;">Unknown BPM</span>
+            </div>
+        `;
+        
+        listViewContainer.appendChild(trackCard);
+    });
+    
+    container.appendChild(listViewContainer);
+    
+    // Create chart view container (hidden by default)
+    const chartViewContainer = document.createElement('div');
+    chartViewContainer.id = 'bpm-chart-view';
+    chartViewContainer.className = 'bpm-chart-container';
+    chartViewContainer.style.display = 'none';
+    
+    const canvas = document.createElement('canvas');
+    canvas.id = 'bpm-chart';
+    chartViewContainer.appendChild(canvas);
+    
+    container.appendChild(chartViewContainer);
+    
+    // Add event listeners to toggle buttons
+    document.getElementById('list-view-button').addEventListener('click', function() {
+        this.classList.add('active');
+        document.getElementById('chart-view-button').classList.remove('active');
+        document.getElementById('bpm-list-view').style.display = 'grid';
+        document.getElementById('bpm-chart-view').style.display = 'none';
+    });
+    
+    document.getElementById('chart-view-button').addEventListener('click', function() {
+        this.classList.add('active');
+        document.getElementById('list-view-button').classList.remove('active');
+        document.getElementById('bpm-list-view').style.display = 'none';
+        document.getElementById('bpm-chart-view').style.display = 'block';
+        
+        // Create the chart when switching to chart view
+        createBPMChart(tracks);
+    });
+}
+
+// Create BPM chart
+function createBPMChart(tracks) {
+    const ctx = document.getElementById('bpm-chart').getContext('2d');
+    
+    // Count tracks by BPM in ranges of 10
+    const bpmCounts = {};
+    tracks.filter(t => t.bpm).forEach(track => {
+        const bpmRange = Math.floor(track.bpm / 10) * 10;
+        bpmCounts[bpmRange] = (bpmCounts[bpmRange] || 0) + 1;
+    });
+    
+    // Sort ranges
+    const sortedRanges = Object.keys(bpmCounts).sort((a, b) => parseInt(a) - parseInt(b));
+    const counts = sortedRanges.map(range => bpmCounts[range]);
+    const labels = sortedRanges.map(range => `${range}-${parseInt(range) + 9} BPM`);
+    
+    // Generate colors
+    const colors = sortedRanges.map(range => {
+        const midPoint = parseInt(range) + 5;
+        if (midPoint <= 90) return 'rgba(52, 152, 219, 0.7)'; // Blue
+        if (midPoint <= 110) return 'rgba(39, 174, 96, 0.7)'; // Green
+        if (midPoint <= 130) return 'rgba(241, 196, 15, 0.7)'; // Yellow
+        if (midPoint <= 150) return 'rgba(230, 126, 34, 0.7)'; // Orange
+        return 'rgba(231, 76, 60, 0.7)'; // Red
+    });
+    
+    // Destroy previous chart if it exists
+    if (window.bpmChart) {
+        window.bpmChart.destroy();
+    }
+    
+    window.bpmChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Number of Tracks',
+                data: counts,
+                backgroundColor: colors,
+                borderColor: colors.map(c => c.replace('0.7', '1')),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Tracks'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'BPM Range'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            return tooltipItems[0].label;
+                        },
+                        label: function(context) {
+                            return `${context.raw} track${context.raw !== 1 ? 's' : ''}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Setup Genre Filtering
+function setupGenreFiltering(tracks) {
+    // Get all unique genres
+    const allGenres = [...new Set(tracks.flatMap(track => track.genres))];
+    
+    // Add filter controls
+    const filterContainer = document.getElementById('track-genres-container');
+    
+    // Create genre filter controls
+    const filterControls = document.createElement('div');
+    filterControls.className = 'genre-filter-controls';
+    filterControls.innerHTML = '<button id="reset-filter" class="filter-reset-button">Show All Genres</button>';
+    
+    // Insert the controls before the track list
+    filterContainer.insertBefore(filterControls, document.getElementById('track-genres-list'));
+    
+    // Add event listener to reset button
+    document.getElementById('reset-filter').addEventListener('click', function() {
+        // Show all tracks
+        const allTracks = document.querySelectorAll('.track-card');
+        allTracks.forEach(track => {
+            track.style.display = 'block';
+        });
+        
+        // Remove selected class from all genre tags
+        const allGenreTags = document.querySelectorAll('.track-genre');
+        allGenreTags.forEach(tag => {
+            tag.classList.remove('selected');
+        });
+    });
+    
+    // Make genre tags clickable for filtering
+    setTimeout(() => {
+        const genreTags = document.querySelectorAll('.track-genre');
+        
+        genreTags.forEach(tag => {
+            tag.addEventListener('click', function() {
+                const selectedGenre = this.textContent.trim();
+                
+                // Toggle selected class
+                this.classList.toggle('selected');
+                
+                // If any genre is selected, filter tracks
+                const selectedTags = document.querySelectorAll('.track-genre.selected');
+                
+                if (selectedTags.length > 0) {
+                    // Get all selected genres
+                    const selectedGenres = Array.from(selectedTags).map(tag => tag.textContent.trim());
+                    
+                    // Filter tracks
+                    const allTracks = document.querySelectorAll('.track-card');
+                    
+                    allTracks.forEach(trackCard => {
+                        const trackGenres = Array.from(trackCard.querySelectorAll('.track-genre'))
+                            .map(tag => tag.textContent.trim());
+                        
+                        // Show track if it has any of the selected genres
+                        const hasSelectedGenre = trackGenres.some(genre => selectedGenres.includes(genre));
+                        trackCard.style.display = hasSelectedGenre ? 'block' : 'none';
+                    });
+                } else {
+                    // If no genres are selected, show all tracks
+                    const allTracks = document.querySelectorAll('.track-card');
+                    allTracks.forEach(track => {
+                        track.style.display = 'block';
+                    });
+                }
+            });
+        });
+    }, 1000); // Small delay to ensure DOM is ready
+}
+
+// Assign genre colors
+function assignGenreColors(genre) {
+    const mainGenres = {
+        'pop': 'genre-pop',
+        'rock': 'genre-rock',
+        'hip hop': 'genre-hiphop',
+        'rap': 'genre-rap',
+        'r&b': 'genre-rnb',
+        'electronic': 'genre-electronic',
+        'dance': 'genre-dance',
+        'alternative': 'genre-alternative',
+        'indie': 'genre-indie',
+        'metal': 'genre-metal',
+        'jazz': 'genre-jazz',
+        'classical': 'genre-classical',
+        'country': 'genre-country',
+        'folk': 'genre-folk',
+        'blues': 'genre-blues',
+        'reggae': 'genre-reggae',
+        'latin': 'genre-latin',
+        'world': 'genre-world'
+    };
+    
+    // Check for exact matches first
+    if (mainGenres[genre.toLowerCase()]) {
+        return mainGenres[genre.toLowerCase()];
+    }
+    
+    // Check for partial matches
+    for (const key in mainGenres) {
+        if (genre.toLowerCase().includes(key)) {
+            return mainGenres[key];
+        }
+    }
+    
+    // Default
+    return 'genre-other';
+}
+
+// Update the displayTrackGenres function to include genre colors
+function displayTrackGenres(tracks) {
+    trackGenresList.innerHTML = '';
+    
+    tracks.forEach(track => {
+        const trackCard = document.createElement('div');
+        trackCard.className = 'track-card';
+        
+        // Include BPM info if available
+        const bpmInfo = track.bpm ? 
+            `<div class="track-bpm">
+                <span class="bpm-tag ${getBPMColor(track.bpm)}">${track.bpm} BPM</span>
+            </div>` : '';
+        
+        trackCard.innerHTML = `
+            <img src="${track.album.images[2]?.url || 'placeholder.png'}" alt="${track.name}">
+            <div class="track-title">${track.name}</div>
+            <div class="track-artist">${track.artists.map(a => a.name).join(', ')}</div>
+            ${bpmInfo}
+            <div class="track-genres">
+                ${track.genres.map(genre => `
+                    <span class="track-genre ${assignGenreColors(genre)}">${genre}</span>
+                `).join(' ')}
+            </div>
+        `;
+        
+        trackGenresList.appendChild(trackCard);
+    });
+}
+
+// Update the fetchSimilarArtists function to fix the API error
+async function fetchSimilarArtists(artistId) {
+    const accessToken = localStorage.getItem('spotify_access_token');
+    if (!accessToken) {
+        throw new Error('No access token found');
+    }
+    
+    try {
+        const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/related-artists`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            // If we get a 404, it could be that the artist doesn't have similar artists or the API changed
+            if (response.status === 404) {
+                console.log(`No similar artists found for artist ID: ${artistId}`);
+                return [];
+            }
+            throw new Error(`Failed to fetch similar artists: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        return data.artists.slice(0, 8); // Return top 8 similar artists
+    } catch (error) {
+        console.error('Error fetching similar artists:', error);
+        // Return empty array instead of throwing an error
+        return [];
+    }
+}
+
+// Update the Playlist Statistics Dashboard to replace Dominant Decade with Average BPM
+function displayPlaylistStatistics(tracks, playlistData) {
+    // Calculate statistics
+    const stats = {
+        totalDuration: calculateTotalDuration(tracks),
+        uniqueArtistsCount: countUniqueArtists(tracks),
+        totalTracks: tracks.length,
+        decadeDistribution: getDecadeDistribution(tracks),
+        popularitySpectrum: getPopularitySpectrum(tracks),
+        averageTrackLength: calculateAverageTrackLength(tracks),
+        averageBPM: calculateAverageBPM(tracks)
+    };
+    
+    // Format statistics for display
+    const formattedStats = {
+        totalDuration: formatDuration(stats.totalDuration),
+        artistDiversity: ((stats.uniqueArtistsCount / stats.totalTracks) * 100).toFixed(0) + '%',
+        averageBPM: stats.averageBPM.value + ' BPM',
+        averagePopularity: stats.popularitySpectrum.averagePopularity.toFixed(0) + '%',
+        averageTrackLength: formatDuration(stats.averageTrackLength)
+    };
+    
+    // Update the dashboard
+    document.getElementById('total-duration').textContent = formattedStats.totalDuration;
+    document.getElementById('artist-diversity').textContent = formattedStats.artistDiversity;
+    document.getElementById('average-bpm').textContent = formattedStats.averageBPM;
+    document.getElementById('average-popularity').textContent = formattedStats.averagePopularity;
+    document.getElementById('average-track-length').textContent = formattedStats.averageTrackLength;
+    
+    // Create decade distribution chart
+    createDecadeChart(stats.decadeDistribution);
+    
+    // Create popularity spectrum chart
+    createPopularitySpectrumChart(stats.popularitySpectrum.distribution);
+}
+
+// Calculate average BPM
+function calculateAverageBPM(tracks) {
+    let totalBPM = 0;
+    let tracksWithBPM = 0;
+    
+    tracks.forEach(track => {
+        if (track.bpm) {
+            totalBPM += track.bpm;
+            tracksWithBPM++;
+        }
+    });
+    
+    const averageBPM = tracksWithBPM > 0 ? Math.round(totalBPM / tracksWithBPM) : 0;
+    const description = getBPMDescription(averageBPM);
+    
+    return {
+        value: averageBPM,
+        description: description,
+        percentage: tracksWithBPM > 0 ? (tracksWithBPM / tracks.length * 100).toFixed(0) + '%' : '0%'
+    };
 }
 

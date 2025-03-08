@@ -586,3 +586,236 @@ input[type="text"] {
         grid-template-columns: 1fr;
     }
 }
+
+/* BPM Analysis for DJs */
+.bpm-container {
+    margin: 30px 0;
+}
+
+.view-toggle-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.view-toggle-button {
+    background-color: #1DB954;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.view-toggle-button.active {
+    background-color: #166e34;
+    box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.3);
+}
+
+.view-toggle-button:hover:not(.active) {
+    background-color: #1AA34A;
+}
+
+/* BPM Track display */
+.bpm-track-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-gap: 20px;
+}
+
+.track-card .bpm-indicator {
+    display: inline-block;
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    margin-top: 8px;
+}
+
+/* BPM color gradient from low to high */
+.bpm-slow { background: linear-gradient(to right, #3498db, #2980b9); }
+.bpm-medium-slow { background: linear-gradient(to right, #2980b9, #27ae60); }
+.bpm-medium { background: linear-gradient(to right, #27ae60, #f1c40f); }
+.bpm-medium-fast { background: linear-gradient(to right, #f1c40f, #e67e22); }
+.bpm-fast { background: linear-gradient(to right, #e67e22, #e74c3c); }
+
+.bpm-tag {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    color: white;
+    font-size: 12px;
+    margin: 2px;
+    font-weight: bold;
+}
+
+/* BPM ranges with colors */
+.bpm-range-60-90 { background-color: #3498db; }
+.bpm-range-91-110 { background-color: #27ae60; }
+.bpm-range-111-130 { background-color: #f1c40f; }
+.bpm-range-131-150 { background-color: #e67e22; }
+.bpm-range-151-plus { background-color: #e74c3c; }
+
+/* BPM Chart Container */
+#bpm-chart-container {
+    margin: 30px 0;
+    height: 400px;
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Genre Filtering */
+.track-card .track-genre {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.track-card .track-genre:hover {
+    transform: scale(1.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.track-card .track-genre.selected {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1DB954;
+}
+
+.genre-filter-controls {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-reset-button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.filter-reset-button:hover {
+    background-color: #c0392b;
+}
+
+/* Genre color scheme - distinct colors for different genres */
+.genre-pop { background-color: #9b59b6; }
+.genre-rock { background-color: #e74c3c; }
+.genre-hiphop { background-color: #3498db; }
+.genre-rap { background-color: #2c3e50; }
+.genre-rnb { background-color: #f1c40f; }
+.genre-electronic { background-color: #1abc9c; }
+.genre-dance { background-color: #e67e22; }
+.genre-alternative { background-color: #8e44ad; }
+.genre-indie { background-color: #d35400; }
+.genre-metal { background-color: #7f8c8d; }
+.genre-jazz { background-color: #16a085; }
+.genre-classical { background-color: #2980b9; }
+.genre-country { background-color: #f39c12; }
+.genre-folk { background-color: #27ae60; }
+.genre-blues { background-color: #2c3e50; }
+.genre-reggae { background-color: #27ae60; }
+.genre-latin { background-color: #e67e22; }
+.genre-world { background-color: #16a085; }
+.genre-other { background-color: #95a5a6; }
+
+/* DJ Panel - BPM Stats */
+.bpm-stats {
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.bpm-range-distribution {
+    display: flex;
+    margin: 15px 0;
+    height: 30px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bpm-range-segment {
+    height: 100%;
+    transition: all 0.3s;
+}
+
+.bpm-range-segment:hover {
+    opacity: 0.8;
+}
+
+.bpm-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.bpm-legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+}
+
+.bpm-legend-color {
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    margin-right: 5px;
+}
+
+/* Average BPM stat card (replacing dominant decade) */
+.average-bpm-icon {
+    color: #1DB954;
+}
+
+.bpm-meter {
+    height: 5px;
+    width: 80%;
+    margin: 5px auto;
+    background-color: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.bpm-meter-fill {
+    height: 100%;
+    background: linear-gradient(to right, #3498db, #e74c3c);
+    border-radius: 3px;
+}
+
+/* Animation for BPM pulse */
+@keyframes bpmPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.bpm-pulse {
+    animation: bpmPulse 0.6s infinite;
+    display: inline-block;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .bpm-track-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .bpm-range-distribution {
+        height: 20px;
+    }
+    
+    .bpm-legend {
+        font-size: 12px;
+    }
+}
