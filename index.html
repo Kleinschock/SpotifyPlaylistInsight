@@ -30,8 +30,8 @@
                 <li>Click "Analyze Playlist" to see the genre breakdown</li>
             </ol>
             <div class="api-notice">
-    <p><strong>Note:</strong> Some advanced features may be limited due to changes in Spotify's API. The core genre analysis will work for all playlists.</p>
-</div>
+                <p><strong>Note:</strong> Some advanced features may be limited due to changes in Spotify's API. The core genre analysis will work for all playlists.</p>
+            </div>
             <p>Note: Genre information is derived from artist data and may not be perfectly accurate for all tracks.</p>
         </div>
         
@@ -63,36 +63,6 @@
                 <h3>Tracks by Genre</h3>
                 <div id="track-genres-list"></div>
             </div>
-                        <!-- Audio Feature Analysis Dashboard -->
-            <div id="audio-features-container">
-                <h3>Audio Features Analysis</h3>
-                <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>Energy vs. Danceability</h4>
-                    <canvas id="energy-dance-chart"></canvas>
-                <p id="audio-features-fallback" class="hidden">Audio features data could not be loaded. This may be due to API limits or temporary issues.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>Tempo Distribution</h4>
-                    <canvas id="tempo-chart"></canvas>
-                </div>
-                <div class="feature-card">
-                    <h4>Acousticness vs. Instrumentalness</h4>
-                    <canvas id="acoustic-instrument-chart"></canvas>
-                </div>
-                <div class="feature-card">
-                    <h4>Average Audio Features</h4>
-                    <canvas id="features-radar-chart"></canvas>
-                </div>
-                </div>
-            </div>
-            
-            <!-- Mood Trajectory Visualization -->
-            <div id="mood-trajectory-container">
-                <h3>Mood Trajectory</h3>
-                <p>The emotional journey of your playlist from start to finish</p>
-                <canvas id="mood-journey-chart"></canvas>
-            </div>
             
             <!-- Genre Network Visualization -->
             <div id="genre-network-container">
@@ -105,13 +75,6 @@
             <div id="release-year-container">
                 <h3>Release Year Analysis</h3>
                 <canvas id="release-year-chart"></canvas>
-            </div>
-            
-            <!-- Missing Genres Finder -->
-            <div id="missing-genres-container">
-                <h3>Discover Missing Genres</h3>
-                <p>Genres that would complement your playlist based on what's already there</p>
-                <div id="missing-genres-list" class="genre-tag-container"></div>
             </div>
             
             <!-- One-Click Genre Radio Generator -->
