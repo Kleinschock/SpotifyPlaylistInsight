@@ -144,6 +144,10 @@ input[type="text"] {
     z-index: 1000;
 }
 
+#loading-overlay.hidden {
+    display: none !important;
+}
+
 .loader {
     border: 5px solid #f3f3f3;
     border-top: 5px solid #1DB954;
