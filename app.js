@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Your Spotify API credentials
 const clientId = '732dc1eab09c4120945541da8f197de8';
-const redirectUri = window.location.origin + window.location.pathname;
+const redirectUri = 'https://kleinschock.github.io/SpotifyPlaylistInsight/';
 
 // Required Spotify API scopes
 const scopes = 'playlist-read-private playlist-read-collaborative';
