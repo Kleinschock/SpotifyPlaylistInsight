@@ -89,6 +89,75 @@
                 <p>Try adding these related genres to enhance your playlist</p>
                 <div id="similar-genres-list"></div>
             </div>
+            <!-- Top Artists Showcase -->
+<div id="top-artists-container" class="feature-container">
+    <h3>Top Artists Showcase</h3>
+    <div class="two-column-layout">
+        <div class="chart-column">
+            <canvas id="top-artists-chart"></canvas>
+        </div>
+        <div class="list-column">
+            <div id="top-artists-list" class="artists-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Similar Artists Discovery -->
+<div id="similar-artists-container" class="feature-container">
+    <h3>Discover Similar Artists</h3>
+    <p>Find artists similar to your playlist favorites</p>
+    <div id="similar-artists-buttons" class="button-container"></div>
+    <div id="similar-artists-results" class="results-panel"></div>
+</div>
+
+<!-- Playlist Statistics Dashboard -->
+<div id="playlist-statistics-container" class="feature-container">
+    <h3>Playlist Statistics Dashboard</h3>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-value" id="total-duration">-</div>
+            <div class="stat-label">Total Playtime</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🎭</div>
+            <div class="stat-value" id="artist-diversity">-</div>
+            <div class="stat-label">Artist Diversity</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📆</div>
+            <div class="stat-value" id="dominant-decade">-</div>
+            <div class="stat-label">Dominant Decade</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔥</div>
+            <div class="stat-value" id="average-popularity">-</div>
+            <div class="stat-label">Average Popularity</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">⏲️</div>
+            <div class="stat-value" id="average-track-length">-</div>
+            <div class="stat-label">Avg. Track Length</div>
+        </div>
+    </div>
+    <div class="stats-charts">
+        <div class="stats-chart-container">
+            <h4>Decade Distribution</h4>
+            <canvas id="decade-chart"></canvas>
+        </div>
+        <div class="stats-chart-container">
+            <h4>Popularity Spectrum</h4>
+            <canvas id="popularity-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Artist Collaboration Network -->
+<div id="collaboration-network-container" class="feature-container">
+    <h3>Artist Collaboration Network</h3>
+    <p>How artists in your playlist work together</p>
+    <div id="collaboration-network"></div>
+</div>
         </div>
     </div>
     
