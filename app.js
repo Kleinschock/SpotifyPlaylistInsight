@@ -8,7 +8,8 @@ const clientId = '732dc1eab09c4120945541da8f197de8';
 const redirectUri = 'https://kleinschock.github.io/SpotifyPlaylistInsight/';
 
 // Required Spotify API scopes
-const scopes = 'playlist-read-private playlist-read-collaborative user-read-private user-read-email';
+// Required Spotify API scopes
+const scopes = 'playlist-read-private playlist-read-collaborative user-read-private user-top-read';
 
 // DOM elements
 const loginButton = document.getElementById('login-button');
@@ -236,7 +237,7 @@ function generateGenreStats(tracksWithGenres) {
         topGenres: sortedGenres.slice(0, 10) // Top 10 genres
     };
 }
-// Display the results with graceful degradation
+// Display the results with proper error handling
 function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Show the results container
     resultsContainer.classList.remove('hidden');
@@ -258,64 +259,50 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Display track list with genres
     displayTrackGenres(tracksWithGenres);
     
+    // Create the Genre Network Visualization (doesn't need API)
+    createGenreNetworkChart(tracksWithGenres);
+    
+    // Setup Genre Radio buttons (doesn't need API)
+    setupGenreRadioButtons(genreStats.topGenres);
+    
+    // Create Release Year Analysis (doesn't need API)
+    createReleaseYearChart(tracksWithGenres);
+    
+    // Display Genre Similarity Expansion (doesn't need API)
+    displayGenreSimilarityExpansion(genreStats.topGenres.map(g => g.genre));
+    
     // Get track IDs for audio features
     const trackIds = tracksWithGenres.map(track => track.id);
     
-    // Create the Genre Network Visualization
-    createGenreNetworkChart(tracksWithGenres);
-    
-    // Setup Genre Radio buttons (doesn't rely on API calls)
-    setupGenreRadioButtons(genreStats.topGenres);
-    
-    // Create Release Year Analysis (doesn't rely on API calls)
-    createReleaseYearChart(tracksWithGenres);
-    
-    // Display Genre Similarity Expansion (doesn't rely on API calls)
-    displayGenreSimilarityExpansion(genreStats.topGenres.map(g => g.genre));
-    
-    // Try to get missing genres, but don't let it block the UI
+    // Get missing genres with error handling
+    const missingGenresContainer = document.getElementById('missing-genres-container');
     findMissingGenres(genreStats.allGenres.map(g => g.genre))
         .then(missingGenres => {
             displayMissingGenres(missingGenres);
         })
         .catch(error => {
-            console.error('Error displaying missing genres:', error);
-            // Display a fallback message or use default genres
-            displayMissingGenres([
-                'indie rock', 'deep house', 'synthwave', 'lo-fi beats',
-                'alternative hip hop', 'ambient', 'techno'
-            ]);
+            console.error('Error finding missing genres:', error);
+            missingGenresContainer.innerHTML = `
+                <h3>Discover Missing Genres</h3>
+                <p class="error-message">Unable to load genre recommendations: ${error.message}</p>
+            `;
         });
     
-    // Try to get audio features, but gracefully degrade if it fails
+    // Get audio features with error handling
+    const audioFeaturesContainer = document.getElementById('audio-features-container');
+    const moodContainer = document.getElementById('mood-trajectory-container');
+    
     getAudioFeatures(trackIds)
         .then(audioFeatures => {
-            // Check if we got any audio features
-            if (Object.keys(audioFeatures).length === 0) {
-                console.warn('No audio features retrieved, skipping audio feature charts');
-                document.getElementById('audio-features-container').innerHTML = `
-                    <p>Audio features data could not be loaded. This may be due to API limits or temporary issues.</p>
-                `;
-                document.getElementById('mood-trajectory-container').innerHTML = `
-                    <p>Mood trajectory could not be loaded. This may be due to API limits or temporary issues.</p>
-                `;
-                return;
-            }
-            
             // Combine tracks with their audio features
             const tracksWithAudioFeatures = tracksWithGenres.map(track => ({
                 ...track,
-                audioFeatures: audioFeatures[track.id] || {
-                    // Default values if a specific track's features are missing
-                    danceability: 0.5,
-                    energy: 0.5,
-                    acousticness: 0.5,
-                    instrumentalness: 0.5,
-                    liveness: 0.5,
-                    valence: 0.5,
-                    tempo: 120
-                }
-            }));
+                audioFeatures: audioFeatures[track.id] || null
+            })).filter(track => track.audioFeatures !== null);
+            
+            if (tracksWithAudioFeatures.length === 0) {
+                throw new Error('No audio features data available');
+            }
             
             // Create audio feature charts
             createAudioFeatureCharts(tracksWithAudioFeatures);
@@ -325,12 +312,14 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
         })
         .catch(error => {
             console.error('Error creating audio feature charts:', error);
-            // Display fallback content
-            document.getElementById('audio-features-container').innerHTML = `
-                <p>Audio features data could not be loaded. This may be due to API limits or temporary issues.</p>
+            audioFeaturesContainer.innerHTML = `
+                <h3>Audio Features Analysis</h3>
+                <p class="error-message">Unable to load audio features: ${error.message}</p>
             `;
-            document.getElementById('mood-trajectory-container').innerHTML = `
-                <p>Mood trajectory could not be loaded. This may be due to API limits or temporary issues.</p>
+            
+            moodContainer.innerHTML = `
+                <h3>Mood Trajectory</h3>
+                <p class="error-message">Unable to load mood trajectory: ${error.message}</p>
             `;
         });
     
@@ -478,51 +467,43 @@ function displayTrackGenres(tracks) {
         trackGenresList.appendChild(trackCard);
     });
 }
-// 1. Improved Audio Features Function
+// 1. Updated Audio Features Function
 async function getAudioFeatures(trackIds) {
     if (!trackIds || trackIds.length === 0) {
-        console.warn('No track IDs provided for audio features');
-        return {};
+        throw new Error('No track IDs provided for audio features');
     }
     
     const accessToken = localStorage.getItem('spotify_access_token');
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
     const audioFeatures = {};
     
-    try {
-        for (let i = 0; i < trackIds.length; i += 100) {
-            const batch = trackIds.slice(i, i + 100);
-            const response = await fetch(`https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Authentication token expired');
-                } else if (response.status === 429) {
-                    // Rate limiting - wait and try once more
-                    const retryAfter = response.headers.get('Retry-After') || 3;
-                    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-                    i -= 100; // retry this batch
-                    continue;
-                }
-                console.warn(`Audio features API returned status ${response.status}`);
-                throw new Error(`Failed to get audio features: ${response.statusText}`);
+    for (let i = 0; i < trackIds.length; i += 100) {
+        const batch = trackIds.slice(i, i + 100);
+        const response = await fetch(`https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Token expired
+                localStorage.removeItem('spotify_access_token');
+                throw new Error('Authentication failed. Please log in again.');
             }
-            
-            const data = await response.json();
-            if (data.audio_features) {
-                data.audio_features.forEach(feature => {
-                    if (feature) audioFeatures[feature.id] = feature;
-                });
-            }
+            throw new Error(`Failed to get audio features: ${response.status} ${response.statusText}`);
         }
         
-        return audioFeatures;
-    } catch (error) {
-        console.error('Error fetching audio features:', error);
-        // Return an empty object rather than failing completely
-        return {};
+        const data = await response.json();
+        if (data.audio_features) {
+            data.audio_features.forEach(feature => {
+                if (feature) audioFeatures[feature.id] = feature;
+            });
+        }
     }
+    
+    return audioFeatures;
 }
 
 
@@ -834,48 +815,38 @@ function createGenreNetworkChart(tracksWithGenres) {
     `;
 }
 
-// 4. Simplified Missing Genres Finder
+// 4. Updated Missing Genres Finder
 async function findMissingGenres(existingGenres) {
-    // Prepare a default list of genres to recommend if the API fails
-    const defaultGenres = [
-        'indie rock', 'deep house', 'synthwave', 'lo-fi beats',
-        'alternative hip hop', 'ambient', 'techno', 'funk', 'soul',
-        'reggae fusion', 'jazz fusion', 'post-punk', 'folk rock'
-    ];
-    
-    try {
-        const accessToken = localStorage.getItem('spotify_access_token');
-        
-        const response = await fetch('https://api.spotify.com/v1/recommendations/available-genre-seeds', {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
-        
-        if (!response.ok) {
-            console.warn(`Genre seeds API returned status ${response.status}`);
-            // If API fails, use our default genre list
-            return defaultGenres;
-        }
-        
-        const data = await response.json();
-        const availableGenres = data.genres || [];
-        
-        if (availableGenres.length === 0) {
-            return defaultGenres;
-        }
-        
-        // Normalize existing genres (lowercase for comparison)
-        const normalizedExistingGenres = existingGenres.map(g => g.toLowerCase());
-        
-        // Find genres that aren't in the playlist
-        const missingGenres = availableGenres.filter(genre => 
-            !normalizedExistingGenres.includes(genre.toLowerCase()));
-        
-        // Return at most 15 random genres from the missing list
-        return missingGenres.sort(() => 0.5 - Math.random()).slice(0, 15);
-    } catch (error) {
-        console.error('Error finding missing genres:', error);
-        return defaultGenres;
+    const accessToken = localStorage.getItem('spotify_access_token');
+    if (!accessToken) {
+        throw new Error('No access token available');
     }
+    
+    const response = await fetch('https://api.spotify.com/v1/recommendations/available-genre-seeds', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    
+    if (!response.ok) {
+        if (response.status === 401) {
+            // Token expired
+            localStorage.removeItem('spotify_access_token');
+            throw new Error('Authentication failed. Please log in again.');
+        }
+        throw new Error(`Failed to get available genres: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const availableGenres = data.genres || [];
+    
+    // Normalize existing genres (lowercase for comparison)
+    const normalizedExistingGenres = existingGenres.map(g => g.toLowerCase());
+    
+    // Find genres that aren't in the playlist
+    const missingGenres = availableGenres.filter(genre => 
+        !normalizedExistingGenres.includes(genre.toLowerCase()));
+    
+    // Return the first 15 missing genres
+    return missingGenres.slice(0, 15);
 }
 
 function displayMissingGenres(missingGenres) {

@@ -177,7 +177,14 @@ input[type="text"] {
     }
     
 }
-
+.error-message {
+    color: #e74c3c;
+    background-color: #fceae9;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin: 10px 0;
+    border-left: 4px solid #e74c3c;
+}
 /* Audio Features and Visualization Styling */
 .feature-grid {
     display: grid;
