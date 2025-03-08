@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spotify Playlist Genre Visualizer</title>
     <link rel="stylesheet" href="style.css">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.spotify.com https://*.spotifycdn.com; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.scdn.co data:;">
 </head>
 <body>
     <div id="loading-overlay" class="hidden">
@@ -60,6 +61,7 @@
                 <div class="feature-card">
                     <h4>Energy vs. Danceability</h4>
                     <canvas id="energy-dance-chart"></canvas>
+                <p id="audio-features-fallback" class="hidden">Audio features data could not be loaded. This may be due to API limits or temporary issues.</p>
                 </div>
                 <div class="feature-card">
                     <h4>Tempo Distribution</h4>

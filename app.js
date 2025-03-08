@@ -8,7 +8,7 @@ const clientId = '732dc1eab09c4120945541da8f197de8';
 const redirectUri = 'https://kleinschock.github.io/SpotifyPlaylistInsight/';
 
 // Required Spotify API scopes
-const scopes = 'playlist-read-private playlist-read-collaborative';
+const scopes = 'playlist-read-private playlist-read-collaborative user-read-private user-read-email';
 
 // DOM elements
 const loginButton = document.getElementById('login-button');
@@ -236,8 +236,7 @@ function generateGenreStats(tracksWithGenres) {
         topGenres: sortedGenres.slice(0, 10) // Top 10 genres
     };
 }
-
-// Display the results
+// Display the results with graceful degradation
 function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Show the results container
     resultsContainer.classList.remove('hidden');
@@ -256,37 +255,66 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
     // Create bar chart for top genres
     createGenreBarChart(genreStats.topGenres);
     
+    // Display track list with genres
+    displayTrackGenres(tracksWithGenres);
+    
     // Get track IDs for audio features
     const trackIds = tracksWithGenres.map(track => track.id);
     
     // Create the Genre Network Visualization
     createGenreNetworkChart(tracksWithGenres);
     
-    // Setup Genre Radio buttons
+    // Setup Genre Radio buttons (doesn't rely on API calls)
     setupGenreRadioButtons(genreStats.topGenres);
     
-    // Create Release Year Analysis
+    // Create Release Year Analysis (doesn't rely on API calls)
     createReleaseYearChart(tracksWithGenres);
     
-    // Display Genre Similarity Expansion
+    // Display Genre Similarity Expansion (doesn't rely on API calls)
     displayGenreSimilarityExpansion(genreStats.topGenres.map(g => g.genre));
     
-    // Get missing genres
+    // Try to get missing genres, but don't let it block the UI
     findMissingGenres(genreStats.allGenres.map(g => g.genre))
         .then(missingGenres => {
             displayMissingGenres(missingGenres);
         })
         .catch(error => {
             console.error('Error displaying missing genres:', error);
+            // Display a fallback message or use default genres
+            displayMissingGenres([
+                'indie rock', 'deep house', 'synthwave', 'lo-fi beats',
+                'alternative hip hop', 'ambient', 'techno'
+            ]);
         });
     
-    // Get audio features and create visualizations
+    // Try to get audio features, but gracefully degrade if it fails
     getAudioFeatures(trackIds)
         .then(audioFeatures => {
+            // Check if we got any audio features
+            if (Object.keys(audioFeatures).length === 0) {
+                console.warn('No audio features retrieved, skipping audio feature charts');
+                document.getElementById('audio-features-container').innerHTML = `
+                    <p>Audio features data could not be loaded. This may be due to API limits or temporary issues.</p>
+                `;
+                document.getElementById('mood-trajectory-container').innerHTML = `
+                    <p>Mood trajectory could not be loaded. This may be due to API limits or temporary issues.</p>
+                `;
+                return;
+            }
+            
             // Combine tracks with their audio features
             const tracksWithAudioFeatures = tracksWithGenres.map(track => ({
                 ...track,
-                audioFeatures: audioFeatures[track.id] || {}
+                audioFeatures: audioFeatures[track.id] || {
+                    // Default values if a specific track's features are missing
+                    danceability: 0.5,
+                    energy: 0.5,
+                    acousticness: 0.5,
+                    instrumentalness: 0.5,
+                    liveness: 0.5,
+                    valence: 0.5,
+                    tempo: 120
+                }
             }));
             
             // Create audio feature charts
@@ -297,15 +325,18 @@ function displayResults(playlistData, tracksWithGenres, genreStats) {
         })
         .catch(error => {
             console.error('Error creating audio feature charts:', error);
+            // Display fallback content
+            document.getElementById('audio-features-container').innerHTML = `
+                <p>Audio features data could not be loaded. This may be due to API limits or temporary issues.</p>
+            `;
+            document.getElementById('mood-trajectory-container').innerHTML = `
+                <p>Mood trajectory could not be loaded. This may be due to API limits or temporary issues.</p>
+            `;
         });
-    
-    // Display track list with genres
-    displayTrackGenres(tracksWithGenres);
     
     // Scroll to results
     resultsContainer.scrollIntoView({ behavior: 'smooth' });
 }
-
 // Create a pie chart for genres
 function createGenrePieChart(topGenres) {
     const ctx = document.getElementById('genre-pie-chart').getContext('2d');
@@ -447,29 +478,53 @@ function displayTrackGenres(tracks) {
         trackGenresList.appendChild(trackCard);
     });
 }
-// 1. Audio Feature Analysis Dashboard
+// 1. Improved Audio Features Function
 async function getAudioFeatures(trackIds) {
+    if (!trackIds || trackIds.length === 0) {
+        console.warn('No track IDs provided for audio features');
+        return {};
+    }
+    
     const accessToken = localStorage.getItem('spotify_access_token');
     const audioFeatures = {};
     
-    for (let i = 0; i < trackIds.length; i += 100) {
-        const batch = trackIds.slice(i, i + 100);
-        const response = await fetch(`https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`, {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Failed to get audio features: ${response.statusText}`);
+    try {
+        for (let i = 0; i < trackIds.length; i += 100) {
+            const batch = trackIds.slice(i, i + 100);
+            const response = await fetch(`https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication token expired');
+                } else if (response.status === 429) {
+                    // Rate limiting - wait and try once more
+                    const retryAfter = response.headers.get('Retry-After') || 3;
+                    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                    i -= 100; // retry this batch
+                    continue;
+                }
+                console.warn(`Audio features API returned status ${response.status}`);
+                throw new Error(`Failed to get audio features: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            if (data.audio_features) {
+                data.audio_features.forEach(feature => {
+                    if (feature) audioFeatures[feature.id] = feature;
+                });
+            }
         }
         
-        const data = await response.json();
-        data.audio_features.forEach(feature => {
-            if (feature) audioFeatures[feature.id] = feature;
-        });
+        return audioFeatures;
+    } catch (error) {
+        console.error('Error fetching audio features:', error);
+        // Return an empty object rather than failing completely
+        return {};
     }
-    
-    return audioFeatures;
 }
+
 
 function createAudioFeatureCharts(tracksWithFeatures) {
     // Energy vs Danceability scatter plot
@@ -779,58 +834,47 @@ function createGenreNetworkChart(tracksWithGenres) {
     `;
 }
 
-// 4. "Missing Genres" Finder
+// 4. Simplified Missing Genres Finder
 async function findMissingGenres(existingGenres) {
-    const accessToken = localStorage.getItem('spotify_access_token');
+    // Prepare a default list of genres to recommend if the API fails
+    const defaultGenres = [
+        'indie rock', 'deep house', 'synthwave', 'lo-fi beats',
+        'alternative hip hop', 'ambient', 'techno', 'funk', 'soul',
+        'reggae fusion', 'jazz fusion', 'post-punk', 'folk rock'
+    ];
     
     try {
-        // Get available genre seeds from Spotify
+        const accessToken = localStorage.getItem('spotify_access_token');
+        
         const response = await fetch('https://api.spotify.com/v1/recommendations/available-genre-seeds', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         
         if (!response.ok) {
-            throw new Error(`Failed to get available genres: ${response.statusText}`);
+            console.warn(`Genre seeds API returned status ${response.status}`);
+            // If API fails, use our default genre list
+            return defaultGenres;
         }
         
         const data = await response.json();
-        const availableGenres = data.genres;
+        const availableGenres = data.genres || [];
+        
+        if (availableGenres.length === 0) {
+            return defaultGenres;
+        }
         
         // Normalize existing genres (lowercase for comparison)
         const normalizedExistingGenres = existingGenres.map(g => g.toLowerCase());
         
-        // Find similar but missing genres using some heuristics
-        const missingGenres = availableGenres.filter(genre => {
-            // Skip genres that are already in the playlist
-            if (normalizedExistingGenres.includes(genre.toLowerCase())) {
-                return false;
-            }
-            
-            // Check if this genre might be similar to existing ones
-            for (const existingGenre of normalizedExistingGenres) {
-                // If it contains part of an existing genre or vice versa
-                if (genre.includes(existingGenre) || existingGenre.includes(genre)) {
-                    return true;
-                }
-                
-                // Check for similar words
-                const genreWords = genre.split(/\s+|-/);
-                const existingWords = existingGenre.split(/\s+|-/);
-                
-                for (const word of genreWords) {
-                    if (word.length > 3 && existingWords.some(w => w === word)) {
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-        });
+        // Find genres that aren't in the playlist
+        const missingGenres = availableGenres.filter(genre => 
+            !normalizedExistingGenres.includes(genre.toLowerCase()));
         
-        return missingGenres;
+        // Return at most 15 random genres from the missing list
+        return missingGenres.sort(() => 0.5 - Math.random()).slice(0, 15);
     } catch (error) {
         console.error('Error finding missing genres:', error);
-        return [];
+        return defaultGenres;
     }
 }
 
