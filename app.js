@@ -1,3 +1,8 @@
+// Ensure loading overlay is hidden on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('loading-overlay').classList.add('hidden');
+});
+
 // Your Spotify API credentials
 const clientId = '732dc1eab09c4120945541da8f197de8';
 const redirectUri = window.location.origin + window.location.pathname;
