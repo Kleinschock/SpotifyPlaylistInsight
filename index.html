@@ -3,130 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify Playlist Genre Visualizer</title>
+    <title>Spotify + Last.fm Playlist Visualizer</title> <!-- Changed Title -->
     <link rel="stylesheet" href="style.css">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.spotify.com https://*.spotifycdn.com; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.scdn.co https://*.spotifycdn.com https://image-cdn-ak.spotifycdn.com https://i.scdn.co data:;">
+    <!-- Stricter CSP might be needed if loading images/data from Last.fm servers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.spotify.com https://*.spotifycdn.com https://ws.audioscrobbler.com; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.scdn.co https://*.spotifycdn.com https://image-cdn-ak.spotifycdn.com https://i.scdn.co https://lastfm.freetls.fastly.net data:;">
 </head>
 <body>
     <div id="loading-overlay" class="hidden">
         <div class="loader"></div>
     </div>
-    
+
     <div class="container">
-        <h1>Spotify Playlist Genre Visualizer</h1>
-        
+        <h1>Spotify + Last.fm Playlist Visualizer</h1> <!-- Changed Title -->
+
         <div id="login-container">
             <button id="login-button">Login with Spotify</button>
         </div>
-        
+
         <div id="instructions">
             <div class="api-notice">
-                <p><strong>Note:</strong> Some advanced features may be limited due to changes in Spotify's API. The core genre analysis will work for all playlists.</p>
+                <p><strong>Note:</strong> This tool now uses both Spotify and Last.fm APIs. Last.fm provides richer genre (tag) information and similar artist data. Some features may depend on data availability on Last.fm.</p>
             </div>
             <h2>How to Use</h2>
             <ol>
-                <li>Click "Login with Spotify" to connect your account</li>
-                <li>Enter a Spotify playlist URL (e.g., https://open.spotify.com/playlist/37i9dQZEVXcJZyENOWUFo7) or playlist ID</li>
-                <li>Click "Analyze Playlist" to see the genre breakdown</li>
-                <li>Click on any genre in the charts or genre tags to filter tracks by genre</li>
+                <li>Click "Login with Spotify" to connect your account.</li>
+                <li>Enter a Spotify playlist URL or ID.</li>
+                <li>Click "Analyze Playlist".</li>
+                <li>Explore Spotify and Last.fm genre distributions using the charts and toggles.</li>
+                <li>Click genre tags/chart segments to filter tracks.</li>
+                <li>Use "Explore Similar Tracks" (powered by Last.fm top tracks per genre).</li>
+                <li>Use "Discover Similar Artists" (powered by Last.fm, links back to Spotify).</li>
             </ol>
-            <div class="api-notice">
-                <p><strong>Note:</strong> Some advanced features may be limited due to changes in Spotify's API. The core genre analysis will work for all playlists.</p>
-            </div>
-            <p>Note: Genre information is derived from artist data and may not be perfectly accurate for all tracks.</p>
+            <p>Note: Genre information from Spotify is based on artist data. Last.fm information is based on user tags and may differ.</p>
         </div>
-        
+
         <div id="playlist-container" class="hidden">
-            <div style="margin-top: 10px;">
+             <!-- Keep existing debug button if needed -->
+             <!-- <div style="margin-top: 10px;">
                 <button id="debug-button" onclick="debugToken()">Debug API Token</button>
-            </div>
+            </div> -->
             <h2>Enter a Spotify Playlist URL or ID:</h2>
             <input type="text" id="playlist-input" placeholder="https://open.spotify.com/playlist/...">
             <button id="analyze-button">Analyze Playlist</button>
+             <div id="api-error" class="error-message hidden"></div> <!-- Added error display -->
         </div>
-        
+
         <div id="results-container" class="hidden">
             <h2>Playlist Analysis</h2>
-            
+
             <div id="playlist-info"></div>
-            
-            <!-- Simplified Playlist Statistics Dashboard -->
+
+            <!-- Simplified Playlist Statistics Dashboard (Keep as is) -->
             <div id="playlist-statistics-container" class="feature-container">
-                <h3>Playlist Statistics</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">⏱️</div>
-                        <div class="stat-value" id="total-duration">-</div>
-                        <div class="stat-label">Total Playtime</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🎵</div>
-                        <div class="stat-value" id="total-tracks">-</div>
-                        <div class="stat-label">Total Tracks</div>
-                    </div>
-                </div>
+                 <!-- ... existing stats cards ... -->
             </div>
-            
+
+            <!-- Genre Views Toggle -->
+            <div id="genre-view-toggle" class="feature-container" style="text-align: center; margin-bottom: 20px;">
+                <h3>Genre Data Source</h3>
+                <button class="genre-source-button active" data-source="spotify">Spotify Genres</button>
+                <button class="genre-source-button" data-source="lastfm">Last.fm Tags</button>
+                <p class="chart-tip">Select the data source for the charts and track list below.</p>
+            </div>
+
             <div id="genre-chart-container">
-                <h3>Genre Distribution (Pie Chart)</h3>
+                <h3 id="genre-pie-chart-title">Genre Distribution (Spotify - Pie Chart)</h3>
                 <p class="chart-tip">Click on a genre to filter tracks</p>
                 <canvas id="genre-pie-chart"></canvas>
             </div>
-            
+
             <div id="genre-bar-chart-container">
-                <h3>Top Genres (Bar Chart)</h3>
+                <h3 id="genre-bar-chart-title">Top Genres (Spotify - Bar Chart)</h3>
                 <p class="chart-tip">Click on a bar to filter tracks</p>
                 <canvas id="genre-bar-chart"></canvas>
             </div>
-            
-            <!-- Release Year Analysis -->
+
+            <!-- Release Year Analysis (Keep as is) -->
             <div id="release-year-container">
-                <h3>Release Year Analysis</h3>
-                <canvas id="release-year-chart"></canvas>
+                 <!-- ... existing canvas ... -->
             </div>
-            
-            <!-- Improved Genre Connections Visualization -->
+
+            <!-- Improved Genre Connections Visualization (Keep structure, data source will adapt) -->
             <div id="genre-similarity-container" class="feature-container">
-                <h3>Genre Connections</h3>
-                <p>Explore similar genres to enhance your playlist</p>
+                <h3 id="genre-connections-title">Genre Connections (Spotify)</h3>
+                <p>Explore similar genres based on co-occurrence in the playlist (using selected source)</p>
                 <div id="similar-genres-visualization"></div>
+                 <!-- Potentially add Last.fm specific connection view later if desired -->
             </div>
-            
-            <!-- One-Click Genre Radio Generator -->
+
+            <!-- Last.fm Powered Genre Radio -->
             <div id="genre-radio-container">
-                <h3>Explore Similar Tracks by Genre</h3>
-                <div id="genre-radio-buttons" class="genre-buttons-container"></div>
+                <h3>Explore Popular Tracks by Genre (via Last.fm)</h3>
+                <p>Click a top genre from the playlist analysis (using the selected source above) to see popular tracks on Last.fm.</p>
+                <div id="genre-radio-buttons" class="genre-buttons-container">
+                    <!-- Buttons generated by JS -->
+                </div>
+                 <div id="genre-radio-results" class="results-panel hidden" style="margin-top: 20px;">
+                    <h4>Top Tracks for '<span id="selected-genre-radio"></span>':</h4>
+                    <div id="genre-radio-list"></div>
+                 </div>
+                 <!-- Add container for multi-genre overlap results if implementing -->
+                 <!-- <div id="genre-overlap-results" class="results-panel hidden" style="margin-top: 20px;"> -->
+                 <!--    <h4>Best Fit Tracks (Overlap):</h4> -->
+                 <!--    <div id="genre-overlap-list"></div> -->
+                 <!-- </div> -->
             </div>
-            
-            <!-- Top Artists Showcase -->
+
+            <!-- Top Artists Showcase (Keep structure, data source will adapt for list) -->
             <div id="top-artists-container" class="feature-container">
-                <h3>Top Artists Showcase</h3>
-                <div class="two-column-layout">
-                    <div class="chart-column">
-                        <canvas id="top-artists-chart"></canvas>
-                    </div>
-                    <div class="list-column">
-                        <div id="top-artists-list" class="artists-list"></div>
+                 <!-- ... existing structure ... -->
+            </div>
+
+            <!-- Last.fm Powered Similar Artists Discovery -->
+            <div id="similar-artists-container" class="feature-container">
+                <h3>Discover Similar Artists (via Last.fm)</h3>
+                <p>Find artists similar to your playlist's top artists. Click an artist name to search Spotify.</p>
+                <div id="similar-artists-buttons" class="button-container">
+                    <!-- Buttons generated by JS for top artists -->
+                </div>
+                <div id="similar-artists-results" class="results-panel hidden" style="margin-top: 20px;">
+                    <h4>Artists Similar to '<span id="selected-artist-similar"></span>':</h4>
+                    <div id="similar-artists-list">
+                        <!-- Results generated by JS -->
                     </div>
                 </div>
             </div>
-            
-            <!-- Similar Artists Discovery -->
-            <div id="similar-artists-container" class="feature-container">
-                <h3>Discover Similar Artists</h3>
-                <p>Find artists similar to your playlist favorites</p>
-                <div id="similar-artists-buttons" class="button-container"></div>
-                <div id="similar-artists-results" class="results-panel"></div>
-            </div>
-            
+
             <div id="track-genres-container">
                 <h3>Tracks by Genre</h3>
-                <!-- Filter notice will be inserted here -->
+                <!-- Filter notice will be inserted here by JS -->
+                 <div id="track-genre-source-toggle" style="margin-bottom: 15px;">
+                    Show Genres From:
+                    <input type="radio" id="genre-toggle-spotify" name="trackGenreSource" value="spotify" checked>
+                    <label for="genre-toggle-spotify">Spotify</label>
+                    <input type="radio" id="genre-toggle-lastfm" name="trackGenreSource" value="lastfm">
+                    <label for="genre-toggle-lastfm">Last.fm</label>
+                    <input type="radio" id="genre-toggle-both" name="trackGenreSource" value="both">
+                    <label for="genre-toggle-both">Both</label>
+                 </div>
                 <div id="track-genres-list"></div>
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
 </body>

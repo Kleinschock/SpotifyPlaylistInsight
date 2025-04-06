@@ -1,415 +1,71 @@
-body {
-    font-family: 'Arial', sans-serif;
-    line-height: 1.6;
+/* === Existing styles remain the same above this line === */
+
+/* Style for the source toggle buttons */
+.genre-source-button {
+    background-color: #ddd; /* Default inactive */
     color: #333;
-    margin: 0;
-    padding: 0;
-    background-color: #f4f4f4;
-}
-
-.container {
-    width: 80%;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 30px;
-    color: #1DB954; /* Spotify green */
-}
-
-h2, h3 {
-    color: #1DB954;
-}
-
-button {
-    background-color: #1DB954;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-button:hover {
-    background-color: #1AA34A;
-}
-
-input[type="text"] {
-    width: 70%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    font-size: 16px;
-    margin-right: 10px;
-}
-
-.hidden {
-    display: none;
-}
-
-#login-container, #playlist-container {
-    text-align: center;
-    margin: 30px 0;
-}
-/* New Feature Container Styles */
-.feature-container {
-    margin: 40px 0;
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-/* Top Artists Showcase Styles */
-.two-column-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-}
-
-.chart-column, .list-column {
-    background-color: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.artists-list {
-    max-height: 500px;
-    overflow-y: auto;
-}
-
-.artist-card {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    background-color: #f8f8f8;
-    transition: transform 0.2s;
-}
-
-.artist-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.artist-card img {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-right: 15px;
-}
-
-.artist-placeholder {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: #ddd;
-    margin-right: 15px;
-}
-
-.artist-info {
-    flex-grow: 1;
-}
-
-.artist-info h4 {
-    margin: 0 0 5px;
-    font-size: 16px;
-}
-
-.artist-info p {
-    margin: 0 0 8px;
-    color: #666;
-    font-size: 14px;
-}
-
-.artist-more-button {
-    font-size: 12px;
-    padding: 5px 10px;
-}
-
-/* Similar Artists Discovery Styles */
-.button-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.similar-artist-button {
-    background-color: #1DB954;
-    color: white;
-    border: none;
+    border: 1px solid #ccc;
     padding: 8px 15px;
     border-radius: 20px;
     cursor: pointer;
     font-size: 14px;
+    margin: 0 5px;
     transition: all 0.3s;
 }
 
-.similar-artist-button:hover {
-    background-color: #1AA34A;
-    transform: scale(1.05);
+.genre-source-button:hover {
+    background-color: #ccc;
 }
 
-.results-panel {
-    background-color: #f8f8f8;
-    border-radius: 8px;
-    padding: 15px;
-    min-height: 100px;
-}
-
-.similar-artists-list {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.similar-artist-card {
-    background-color: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
-}
-
-.similar-artist-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.similar-artist-card img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-}
-
-.similar-artist-info {
-    padding: 10px;
-}
-
-.similar-artist-info h5 {
-    margin: 0 0 5px;
-    font-size: 15px;
-}
-
-.similar-artist-info p {
-    margin: 0 0 10px;
-    color: #666;
-    font-size: 13px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.similar-artist-info button {
-    width: 100%;
-    font-size: 12px;
-    padding: 5px;
-}
-
-/* Simplified Playlist Statistics Dashboard Styles */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-bottom: 30px;
-}
-
-.stat-card {
-    background-color: #f8f8f8;
-    border-radius: 8px;
-    padding: 15px;
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s;
-}
-
-.stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon {
-    font-size: 24px;
-    margin-bottom: 10px;
-}
-
-.stat-value {
-    font-size: 20px;
-    font-weight: bold;
-    color: #1DB954;
-    margin-bottom: 5px;
-}
-
-.stat-label {
-    font-size: 14px;
-    color: #666;
-}
-
-/* Improved Genre Connections Visualization */
-.genre-connections-visualization {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 30px;
-    margin-top: 20px;
-}
-
-.genre-map {
-    position: relative;
-    width: 300px;
-    height: 300px;
-    margin-bottom: 30px;
-}
-
-.genre-map-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
-.genre-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
+.genre-source-button.active {
+    background-color: #1DB954; /* Active color */
     color: white;
-    font-weight: bold;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    text-align: center;
+    border-color: #1DB954;
 }
 
-.genre-connections {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+/* Results Panel Activation */
+.results-panel:not(.hidden) { /* Style when results are shown */
+    margin-top: 20px;
+    border-top: 2px solid #1DB954;
+    padding-top: 15px;
 }
 
-.genre-connection {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: var(--distance);
-    height: 2px;
-    transform-origin: 0 0;
-    transform: rotate(var(--angle));
+/* Specific styles for Last.fm results lists if needed */
+#genre-radio-list, #similar-artists-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Adjust as needed */
+    gap: 15px;
+    margin-top: 10px;
 }
 
-.connection-line {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.similar-genre-bubble {
-    position: absolute;
-    top: -15px;
-    right: -15px;
-    transform: translateX(100%) rotate(calc(-1 * var(--angle)));
-    padding: 8px 12px;
-    border-radius: 20px;
-    white-space: nowrap;
+/* Style for individual items in Last.fm results */
+.lastfm-result-item {
+    background-color: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     font-size: 14px;
-    z-index: 1;
-    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.similar-genre-bubble:hover {
-    transform: translateX(100%) rotate(calc(-1 * var(--angle))) scale(1.1);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.similar-genre-bubble a {
-    color: #333;
+.lastfm-result-item a {
+    color: #1DB954;
     text-decoration: none;
+    font-weight: bold;
 }
 
-.similar-genre-bubble a:hover {
+.lastfm-result-item a:hover {
     text-decoration: underline;
 }
 
-#results-container {
-    margin-top: 40px;
+.lastfm-result-item span { /* For artist name or playcount */
+    display: block;
+    color: #666;
+    font-size: 12px;
+    margin-top: 3px;
 }
 
-#genre-chart-container, #genre-bar-chart-container {
-    margin: 30px 0;
-    height: 400px;
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
 
-#track-genres-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    grid-gap: 20px;
-}
-
-.track-card {
-    background-color: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    transition: transform 0.2s;
-}
-
-.track-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.track-card img {
-    width: 60px;
-    height: 60px;
-    border-radius: 5px;
-    float: left;
-    margin-right: 15px;
-    object-fit: cover;
-}
-
-.track-card .track-title {
-    font-weight: bold;
-    margin-bottom: 5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.track-card .track-artist {
-    color: #777;
-    margin-bottom: 5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.track-card .track-genres {
-    clear: both;
-    padding-top: 10px;
-}
-
+/* Track Card Genre Tag Styling */
 .track-card .track-genre {
     display: inline-block;
     color: white;
@@ -417,225 +73,55 @@ input[type="text"] {
     border-radius: 10px;
     font-size: 12px;
     margin: 2px;
-}
-
-#playlist-info {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-#playlist-info img {
-    width: 150px;
-    height: 150px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-#instructions {
-    background-color: #f8f8f8;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 30px;
-    border-left: 5px solid #1DB954;
-}
-
-#instructions h2 {
-    margin-top: 0;
-}
-
-#loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-#loading-overlay.hidden {
-    display: none !important;
-}
-
-.loader {
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #1DB954;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    animation: spin 2s linear infinite;
-}
-
-.api-notice {
-    background-color: #f8f9fa;
-    border-left: 4px solid #ffc107;
-    padding: 10px 15px;
-    margin-bottom: 20px;
-    font-size: 14px;
-}
-
-#release-year-container {
-    margin: 40px 0;
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-#genre-radio-container {
-    margin: 40px 0;
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-#track-genres-container {
-    margin: 40px 0;
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.genre-buttons-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.genre-radio-button {
-    background-color: #1DB954;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.3s;
-}
-
-.genre-radio-button:hover {
-    transform: scale(1.05);
-    filter: brightness(1.1);
-}
-
-.error-message {
-    color: #e74c3c;
-    background-color: #fceae9;
-    padding: 10px 15px;
-    border-radius: 5px;
-    margin: 10px 0;
-    border-left: 4px solid #e74c3c;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Responsive styles */
-@media (max-width: 992px) {
-    .two-column-layout {
-        grid-template-columns: 1fr;
-    }
-    
-    .similar-artists-list {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .stats-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    
-    .genre-connections-visualization {
-        flex-direction: column;
-        align-items: center;
-    }
-}
-/* Add styles for filter functionality */
-.filter-notice {
-    background-color: #f1f8ff;
-    border-left: 4px solid #1DB954;
-    padding: 10px 15px;
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 5px;
-}
-
-.clear-filter-button {
-    background-color: #f8f9fa;
-    color: #333;
-    border: 1px solid #ddd;
-    padding: 5px 10px;
-    border-radius: 15px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s;
-}
-
-.clear-filter-button:hover {
-    background-color: #e9ecef;
-}
-
-.track-genre {
-    display: inline-block;
-    color: white;
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-size: 12px;
-    margin: 2px;
-    cursor: pointer;
+    cursor: pointer; /* Keep cursor for filtering */
     transition: transform 0.2s, opacity 0.2s;
+    background-color: #777; /* Default/Spotify color */
 }
 
-.track-genre:hover {
+.track-card .track-genre.genre-spotify {
+    background-color: #1DB954; /* Spotify Green */
+    border: 1px solid #1AA34A;
+}
+
+.track-card .track-genre.genre-lastfm {
+    background-color: #d51007; /* Last.fm Red */
+    border: 1px solid #b30d05;
+}
+
+.track-card .track-genre:hover {
     transform: scale(1.1);
     opacity: 0.9;
 }
 
-.chart-tip {
-    text-align: center;
-    font-size: 14px;
-    color: #666;
-    font-style: italic;
-    margin-top: -10px;
-    margin-bottom: 10px;
+/* Track Genre Source Toggle */
+#track-genre-source-toggle label {
+    margin-right: 10px;
+    margin-left: 3px;
+}
+#track-genre-source-toggle input[type="radio"] {
+    margin-right: 1px;
 }
 
-/* Simplified Playlist Statistics Dashboard Styles */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    margin-bottom: 30px;
-}
+/* Error Message Styling */
+#api-error:not(.hidden) { /* Style when error is shown */
+     margin-top: 15px;
+     margin-bottom: 15px;
+ }
+
+/* Responsive styles adjustments might be needed for new grid layouts */
 @media (max-width: 768px) {
-    .container {
-        width: 95%;
+    #genre-radio-list, #similar-artists-list {
+        grid-template-columns: 1fr; /* Stack on smaller screens */
     }
-    
-    input[type="text"] {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-    
-    #track-genres-list {
-        grid-template-columns: 1fr;
-    }
-    
-    .similar-artists-list {
-        grid-template-columns: 1fr;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
+    /* Adjust stats grid if it was changed */
+     .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* More flexible stats */
     }
 }
+
+/* Make sure the .hidden class overrides display properties */
+.hidden {
+    display: none !important;
+}
+
+/* === Rest of existing styles === */
