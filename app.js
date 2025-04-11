@@ -605,26 +605,69 @@ function getGenreCounts(tracks, source = 'spotify') {
     return sortedGenres;
 }
 
-// --- Chart Rendering --- (createOrUpdateChart, handleChartClick, createReleaseYearChart unchanged)
 function createOrUpdateChart(chartId, chartType, data, options, instanceKey) {
-    const ctx = document.getElementById(chartId)?.getContext('2d');
-    if (!ctx) { console.error(`Canvas context not found for ID: ${chartId}`); return; }
+    // 1. Find the element
+    const canvasElement = document.getElementById(chartId);
+    console.log(`[createOrUpdateChart - ${instanceKey}] Attempting ID: '${chartId}'. Element found:`, canvasElement);
+
+    // 2. Check if the element exists in the DOM
+    if (!canvasElement) {
+        console.error(`[createOrUpdateChart - ${instanceKey}] Element with ID '${chartId}' not found in the DOM.`);
+        showError(`Chart rendering failed: Element '${chartId}' not found.`);
+        return; // Stop execution for this chart
+    }
+
+    // 3. Check if it's actually a CANVAS element
+    if (canvasElement.tagName.toLowerCase() !== 'canvas') {
+        console.error(`[createOrUpdateChart - ${instanceKey}] Element with ID '${chartId}' is not a <canvas> element. Tag: ${canvasElement.tagName}`);
+        showError(`Chart rendering failed: Element '${chartId}' is not a canvas.`);
+        return; // Stop execution for this chart
+    }
+
+    // 4. Log computed display style just before getting context
+    const computedDisplay = window.getComputedStyle(canvasElement).display;
+    console.log(`[createOrUpdateChart - ${instanceKey}] Element '${chartId}' computed display style: ${computedDisplay}`);
+
+    // 5. Try to get the context
+    let ctx = null;
+    try {
+        ctx = canvasElement.getContext('2d');
+    } catch (e) {
+        console.error(`[createOrUpdateChart - ${instanceKey}] Error getting 2D context for ID '${chartId}':`, e);
+        showError(`Chart rendering failed: Cannot get context for '${chartId}'.`);
+        return; // Stop execution for this chart
+    }
+
+    // 6. Check if context was successfully obtained
+    if (!ctx) {
+        console.error(`[createOrUpdateChart - ${instanceKey}] Failed to get 2D context for ID '${chartId}'. Context is null/undefined. Element:`, canvasElement);
+        showError(`Chart rendering failed: Context is null for '${chartId}'.`);
+        // Maybe log width/height?
+        console.log(`[createOrUpdateChart - ${instanceKey}] Canvas dimensions: ${canvasElement.width}x${canvasElement.height}. Offset dimensions: ${canvasElement.offsetWidth}x${canvasElement.offsetHeight}`);
+        return; // Stop execution for this chart
+    }
+
+    // --- Context obtained, proceed with Chart.js ---
+    console.log(`[createOrUpdateChart - ${instanceKey}] Successfully obtained 2D context for ID '${chartId}'.`);
 
     // Destroy previous instance if it exists
     if (chartInstances[instanceKey]) {
-        try { chartInstances[instanceKey].destroy(); } catch(e) { console.error("Error destroying chart:", instanceKey, e); }
+        try {
+            chartInstances[instanceKey].destroy();
+            console.log(`[createOrUpdateChart - ${instanceKey}] Destroyed previous chart instance.`);
+        } catch (e) {
+            console.error(`[createOrUpdateChart - ${instanceKey}] Error destroying previous chart instance:`, e);
+        }
         delete chartInstances[instanceKey];
     }
 
     // Create new chart instance
     try {
         chartInstances[instanceKey] = new Chart(ctx, { type: chartType, data, options });
+        console.log(`[createOrUpdateChart - ${instanceKey}] Successfully created new Chart.js instance.`);
     } catch (e) {
-        console.error(`Error creating chart '${instanceKey}' (ID: ${chartId}):`, e);
-        showError(`Could not render the ${instanceKey} chart.`);
-        // Optionally clear the canvas or show a placeholder error
-        // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        // ctx.fillText("Chart Error", 10, 50);
+        console.error(`[createOrUpdateChart - ${instanceKey}] Error creating new Chart.js instance:`, e);
+        showError(`Could not render the ${instanceKey} chart instance.`);
     }
 }
 function handleChartClick(event, elements, labels) {
