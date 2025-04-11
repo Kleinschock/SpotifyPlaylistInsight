@@ -81,39 +81,63 @@ function setupIntersectionObserver() {
 }
 
 function showSkeletonLoader(show) {
-    if (!resultsSkeletonLoader || !resultsActualContent) return;
-    if (show) {
-        resultsSkeletonLoader.classList.remove('hidden');
-        resultsActualContent.classList.add('hidden');
-        resultsContainer.classList.remove('hidden');
-        // Reset results/panels that might be populated
-        playlistInfoDiv.innerHTML = '';
-        trackGenresListDiv.innerHTML = '';
-        topArtistsListContainer.innerHTML = '';
-        if(similarArtistsSectionTitle) similarArtistsSectionTitle.innerHTML = `<span data-feather="users" class="icon"></span> Discover Similar Artists (Last.fm)`;
-        if(similarArtistsSectionDesc) similarArtistsSectionDesc.textContent = `Find artists similar to the top ones in your playlist.`;
-        similarArtistsResultsPanel?.classList.add('hidden');
-        similarArtistsListDiv.innerHTML = '';
-        genreRadioResultsPanel?.classList.add('hidden');
-        genreRadioListDiv.innerHTML = '';
-        genreRadioButtonsContainer.innerHTML = '<p class="small-text">Select a genre source above to enable.</p>';
-        filterNoticeContainer.innerHTML = '';
-        Object.values(chartInstances).forEach(chart => chart?.destroy());
-        chartInstances = {};
-        // Reset stats
-        totalTracksEl.textContent = '-';
-        totalDurationEl.textContent = '-';
-        uniqueArtistsEl.textContent = '-';
-        uniqueGenresEl.textContent = '-';
+    // Ensure resultsContainer itself is visible when loading starts or finishes
+    if (resultsContainer) resultsContainer.classList.remove('hidden');
 
+    if (resultsSkeletonLoader && resultsActualContent) {
+        if (show) {
+            resultsSkeletonLoader.classList.remove('hidden'); // Show skeleton
+            // !! DO NOT HIDE resultsActualContent - Let it be populated !!
+            // resultsActualContent.classList.add('hidden');
+
+            // --- Reset content areas WITHIN #results-actual-content ---
+            // Clear previous results explicitly here to ensure clean state
+            playlistInfoDiv.innerHTML = '';
+            trackGenresListDiv.innerHTML = '';
+            topArtistsListContainer.innerHTML = '';
+            if(similarArtistsSectionTitle) similarArtistsSectionTitle.innerHTML = `<span data-feather="users" class="icon"></span> Discover Similar Artists (Last.fm)`;
+            if(similarArtistsSectionDesc) similarArtistsSectionDesc.textContent = `Find artists similar to the top ones in your playlist.`;
+            similarArtistsResultsPanel?.classList.add('hidden');
+            similarArtistsListDiv.innerHTML = '';
+            genreRadioResultsPanel?.classList.add('hidden');
+            genreRadioListDiv.innerHTML = '';
+            genreRadioButtonsContainer.innerHTML = '<p class="small-text">Select a genre source above to enable.</p>';
+            filterNoticeContainer.innerHTML = '';
+            // Clear old charts
+             Object.values(chartInstances).forEach(chart => {
+                try { chart?.destroy(); } catch(e) {}
+             });
+             chartInstances = {};
+             // Clear canvas elements manually if needed (optional, chart.destroy should handle)
+             document.getElementById('genre-pie-chart')?.getContext('2d').clearRect(0,0,100,100); // Example clear
+             document.getElementById('genre-bar-chart')?.getContext('2d').clearRect(0,0,100,100);
+             document.getElementById('release-year-chart')?.getContext('2d').clearRect(0,0,100,100);
+             document.getElementById('top-artists-chart')?.getContext('2d').clearRect(0,0,100,100);
+
+            // Reset stats
+            totalTracksEl.textContent = '-';
+            totalDurationEl.textContent = '-';
+            uniqueArtistsEl.textContent = '-';
+            uniqueGenresEl.textContent = '-';
+            // --- End Reset ---
+
+        } else {
+            resultsSkeletonLoader.classList.add('hidden'); // Hide skeleton
+            // resultsActualContent should already be visible and populated by now
+            // resultsActualContent.classList.remove('hidden'); // No longer needed
+
+            // Defer icon replacement and observer setup
+            // Run these AFTER the content is populated and skeleton is hidden
+            setTimeout(() => {
+                console.log("Running post-load UI updates (Feather, Observer)");
+                replaceFeatherIcons();
+                setupIntersectionObserver();
+             }, 100); // Small delay after hiding skeleton
+        }
     } else {
-        resultsSkeletonLoader.classList.add('hidden');
-        resultsActualContent.classList.remove('hidden');
-        // Defer icon replacement and observer setup until content is visible
-        setTimeout(() => { replaceFeatherIcons(); setupIntersectionObserver(); }, 50);
+         console.error("Skeleton loader or actual content container not found!");
     }
 }
-
 
 function updateFooterYear() {
     const yearEl = document.getElementById('current-year');
@@ -1312,9 +1336,10 @@ async function analyzePlaylist() {
 
     // --- Start Loading State ---
     clearError();
-    showSkeletonLoader(true); // Show skeleton loader for the results area
-    currentPlaylistData = null; // Reset state
-    currentGenreFilter = null; // Reset filter
+    showSkeletonLoader(true); // Show skeleton, CLEAR previous content inside #results-actual-content
+    let topArtists = [];
+    let initialGenreCounts = [];
+
 
     try {
         // --- Fetch Core Playlist Info ---
@@ -1347,63 +1372,51 @@ async function analyzePlaylist() {
         // --- Process Data ---
         currentPlaylistData = processPlaylistData(playlistInfo, tracksRaw, artistDetails);
         if (!currentPlaylistData) throw new Error("Failed to process playlist data.");
-
-        // --- Prepare Data for Charts & Display Non-Chart UI ---
+        
+        // --- Prepare Data & Display ALL UI (including charts) ---
+        // Populate #results-actual-content WHILE skeleton is visible
         initialGenreCounts = getGenreCounts(currentPlaylistData.tracks, activeGenreSource);
-        // Calculate top artists data, but don't render chart/list yet if separated
-        // For simplicity, we'll call displayTopArtists later, which does both
-        displayPlaylistInfo(currentPlaylistData); // Render non-chart info
-        displayTrackList(currentPlaylistData.tracks, null, activeTrackGenreSource); // Render non-chart info
+        displayPlaylistInfo(currentPlaylistData);
+        displayTrackList(currentPlaylistData.tracks, null, activeTrackGenreSource);
+        // Render charts immediately - the canvas elements should exist in the static HTML structure
+        debouncedUpdateCharts(initialGenreCounts);
+        createReleaseYearChart(currentPlaylistData.tracks);
+        topArtists = displayTopArtists(currentPlaylistData.tracks, currentPlaylistData.artistDetails);
 
-        showSkeletonLoader(false); // <-- Reveal content DIV
+        // --- Hide Skeleton ---
+        showSkeletonLoader(false); // <-- Hide skeleton, reveal populated content
 
-        // --- Defer Chart Rendering Slightly ---
-        // Use setTimeout to ensure the DOM has rendered the canvases
-        setTimeout(() => {
-            try {
-                console.log("Deferred execution: Rendering charts and top artists list.");
-                debouncedUpdateCharts(initialGenreCounts);
-                createReleaseYearChart(currentPlaylistData.tracks);
-                // Recalculate or ensure topArtists is available here if needed
-                // Assuming displayTopArtists needs to run here to render its chart
-                const artistsForRecommendations = displayTopArtists(currentPlaylistData.tracks, currentPlaylistData.artistDetails);
+        // --- Run Aggregate Recommendations (Asynchronously) ---
+        // Run this after the skeleton is hidden and main UI is rendered
+        if (topArtists && topArtists.length > 0 && currentPlaylistData?.tracks) {
+             const allArtistNamesLower = new Set(
+                 currentPlaylistData.tracks.map(t => t.primaryArtistName.toLowerCase().trim())
+             );
+             fetchAndDisplayAggregateRecommendations(topArtists, allArtistNamesLower);
+        } else {
+             if (similarArtistsContainer) similarArtistsContainer.classList.add('hidden');
+             console.log("Skipping aggregate recommendations (no top artists or track data).");
+        }
 
-                // --- Run Aggregate Recommendations (Asynchronously) ---
-                // Now run this *after* the charts are initiated inside the timeout
-                 if (artistsForRecommendations && artistsForRecommendations.length > 0 && currentPlaylistData?.tracks) {
-                     const allArtistNamesLower = new Set(
-                         currentPlaylistData.tracks.map(t => t.primaryArtistName.toLowerCase().trim())
-                     );
-                     // Run async - provides its own loading feedback within its container
-                     fetchAndDisplayAggregateRecommendations(artistsForRecommendations, allArtistNamesLower);
-                } else {
-                     if (similarArtistsContainer) similarArtistsContainer.classList.add('hidden');
-                     console.log("Skipping aggregate recommendations (no top artists or track data).");
-                }
-
-            } catch (chartError) {
-                 console.error("Error during deferred chart rendering:", chartError);
-                 showError("An error occurred while rendering the charts.");
-            }
-        }, 50); // Delay of 50ms (adjust if needed, 0 might also work)
-
-
-        console.log("Playlist analysis complete (main flow). Chart rendering deferred.");
-        // Scroll to results after a short delay to allow rendering
+        console.log("Playlist analysis complete.");
+        // Scroll to results after a short delay
          setTimeout(() => {
               if(resultsContainer) resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-         }, 250);
+         }, 150); // Reduced delay slightly
 
     } catch (error) {
-        // ... (rest of catch block remains the same) ...
         console.error("Playlist analysis pipeline failed:", error);
         showError(`Analysis failed: ${error.message}. Please check the playlist and try again.`);
-        showSkeletonLoader(false); // Hide skeleton on error
-        resultsContainer.classList.add('hidden'); // Hide potentially broken results
-        showInlineLoading(resultsActualContent, false);
+        // Ensure skeleton is hidden even on error
+        if (resultsSkeletonLoader) resultsSkeletonLoader.classList.add('hidden');
+        // Optionally clear the results container or leave partial data?
+        // resultsContainer?.classList.add('hidden'); // Maybe hide all results on error
+        showInlineLoading(resultsActualContent, false); // Clear any inline loading
         showInlineLoading(similarArtistsButtonsPlaceholder, false);
     }
 }
+
+
 // --- Event Listeners --- (Setup remains largely the same)
 function setupEventListeners() {
     if (loginButton) loginButton.addEventListener('click', redirectToSpotifyLogin);
