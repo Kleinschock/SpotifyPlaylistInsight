@@ -1305,50 +1305,49 @@ async function analyzePlaylist() {
         currentPlaylistData = processPlaylistData(playlistInfo, tracksRaw, artistDetails);
         if (!currentPlaylistData) throw new Error("Failed to process playlist data.");
 
-        // --- Render Initial Content (before hiding skeleton) ---
-        // These functions populate the hidden #results-actual-content div
-        displayPlaylistInfo(currentPlaylistData);
-        const initialGenreCounts = getGenreCounts(currentPlaylistData.tracks, activeGenreSource);
-        debouncedUpdateCharts(initialGenreCounts); // Populates charts & genre radio
-        createReleaseYearChart(currentPlaylistData.tracks);
-        // Display top artists and get the list for recommendations
-        const topArtists = displayTopArtists(currentPlaylistData.tracks, currentPlaylistData.artistDetails);
-        displayTrackList(currentPlaylistData.tracks, null, activeTrackGenreSource); // Initial track list
+        // --- Prepare Data for Charts & Display Non-Chart UI ---
+        initialGenreCounts = getGenreCounts(currentPlaylistData.tracks, activeGenreSource);
+        // Calculate top artists data, but don't render chart/list yet if separated
+        // For simplicity, we'll call displayTopArtists later, which does both
+        displayPlaylistInfo(currentPlaylistData); // Render non-chart info
+        displayTrackList(currentPlaylistData.tracks, null, activeTrackGenreSource); // Render non-chart info
 
         // --- Content Ready: Swap Skeleton for Actual Content ---
-        showSkeletonLoader(false); // Hide skeleton, reveal populated content, run observers/icons
+        showSkeletonLoader(false); // <-- Reveal content DIV
+
+        // --- RENDER CHARTS AND CHART-RELATED LISTS NOW ---
+        // It's okay if these take a moment, the main layout is visible.
+        debouncedUpdateCharts(initialGenreCounts); // <-- Call chart function AFTER reveal
+        createReleaseYearChart(currentPlaylistData.tracks); // <-- Call chart function AFTER reveal
+        topArtists = displayTopArtists(currentPlaylistData.tracks, currentPlaylistData.artistDetails); // <-- Call function that includes chart AFTER reveal
 
         // --- Run Aggregate Recommendations (Asynchronously) ---
-        // This runs *after* the main content is visible.
+        // This should still run after the main UI/Charts are initiated
         if (topArtists && topArtists.length > 0 && currentPlaylistData?.tracks) {
              const allArtistNamesLower = new Set(
                  currentPlaylistData.tracks.map(t => t.primaryArtistName.toLowerCase().trim())
              );
-             // Run async - provides its own loading feedback within its container
              fetchAndDisplayAggregateRecommendations(topArtists, allArtistNamesLower);
         } else {
-             // Hide the similar artists section if no top artists or data problem
              if (similarArtistsContainer) similarArtistsContainer.classList.add('hidden');
              console.log("Skipping aggregate recommendations (no top artists or track data).");
         }
 
         console.log("Playlist analysis complete.");
-         // Scroll to results after a short delay to allow rendering
+        // Scroll to results after a short delay to allow rendering
          setTimeout(() => {
               if(resultsContainer) resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-         }, 150);
+         }, 250); // Increased delay slightly
 
     } catch (error) {
         console.error("Playlist analysis pipeline failed:", error);
         showError(`Analysis failed: ${error.message}. Please check the playlist and try again.`);
         showSkeletonLoader(false); // Hide skeleton on error
         resultsContainer.classList.add('hidden'); // Hide potentially broken results
-         // Ensure any inline loading is also cleared if it was active
-         showInlineLoading(resultsActualContent, false);
-         showInlineLoading(similarArtistsButtonsPlaceholder, false);
+        showInlineLoading(resultsActualContent, false);
+        showInlineLoading(similarArtistsButtonsPlaceholder, false);
     }
 }
-
 
 // --- Event Listeners --- (Setup remains largely the same)
 function setupEventListeners() {
