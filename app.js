@@ -1312,34 +1312,47 @@ async function analyzePlaylist() {
         displayPlaylistInfo(currentPlaylistData); // Render non-chart info
         displayTrackList(currentPlaylistData.tracks, null, activeTrackGenreSource); // Render non-chart info
 
-        // --- Content Ready: Swap Skeleton for Actual Content ---
         showSkeletonLoader(false); // <-- Reveal content DIV
 
-        // --- RENDER CHARTS AND CHART-RELATED LISTS NOW ---
-        // It's okay if these take a moment, the main layout is visible.
-        debouncedUpdateCharts(initialGenreCounts); // <-- Call chart function AFTER reveal
-        createReleaseYearChart(currentPlaylistData.tracks); // <-- Call chart function AFTER reveal
-        topArtists = displayTopArtists(currentPlaylistData.tracks, currentPlaylistData.artistDetails); // <-- Call function that includes chart AFTER reveal
+        // --- Defer Chart Rendering Slightly ---
+        // Use setTimeout to ensure the DOM has rendered the canvases
+        setTimeout(() => {
+            try {
+                console.log("Deferred execution: Rendering charts and top artists list.");
+                debouncedUpdateCharts(initialGenreCounts);
+                createReleaseYearChart(currentPlaylistData.tracks);
+                // Recalculate or ensure topArtists is available here if needed
+                // Assuming displayTopArtists needs to run here to render its chart
+                const artistsForRecommendations = displayTopArtists(currentPlaylistData.tracks, currentPlaylistData.artistDetails);
 
-        // --- Run Aggregate Recommendations (Asynchronously) ---
-        // This should still run after the main UI/Charts are initiated
-        if (topArtists && topArtists.length > 0 && currentPlaylistData?.tracks) {
-             const allArtistNamesLower = new Set(
-                 currentPlaylistData.tracks.map(t => t.primaryArtistName.toLowerCase().trim())
-             );
-             fetchAndDisplayAggregateRecommendations(topArtists, allArtistNamesLower);
-        } else {
-             if (similarArtistsContainer) similarArtistsContainer.classList.add('hidden');
-             console.log("Skipping aggregate recommendations (no top artists or track data).");
-        }
+                // --- Run Aggregate Recommendations (Asynchronously) ---
+                // Now run this *after* the charts are initiated inside the timeout
+                 if (artistsForRecommendations && artistsForRecommendations.length > 0 && currentPlaylistData?.tracks) {
+                     const allArtistNamesLower = new Set(
+                         currentPlaylistData.tracks.map(t => t.primaryArtistName.toLowerCase().trim())
+                     );
+                     // Run async - provides its own loading feedback within its container
+                     fetchAndDisplayAggregateRecommendations(artistsForRecommendations, allArtistNamesLower);
+                } else {
+                     if (similarArtistsContainer) similarArtistsContainer.classList.add('hidden');
+                     console.log("Skipping aggregate recommendations (no top artists or track data).");
+                }
 
-        console.log("Playlist analysis complete.");
+            } catch (chartError) {
+                 console.error("Error during deferred chart rendering:", chartError);
+                 showError("An error occurred while rendering the charts.");
+            }
+        }, 50); // Delay of 50ms (adjust if needed, 0 might also work)
+
+
+        console.log("Playlist analysis complete (main flow). Chart rendering deferred.");
         // Scroll to results after a short delay to allow rendering
          setTimeout(() => {
               if(resultsContainer) resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-         }, 250); // Increased delay slightly
+         }, 250);
 
     } catch (error) {
+        // ... (rest of catch block remains the same) ...
         console.error("Playlist analysis pipeline failed:", error);
         showError(`Analysis failed: ${error.message}. Please check the playlist and try again.`);
         showSkeletonLoader(false); // Hide skeleton on error
@@ -1348,7 +1361,6 @@ async function analyzePlaylist() {
         showInlineLoading(similarArtistsButtonsPlaceholder, false);
     }
 }
-
 // --- Event Listeners --- (Setup remains largely the same)
 function setupEventListeners() {
     if (loginButton) loginButton.addEventListener('click', redirectToSpotifyLogin);
