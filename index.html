@@ -42,8 +42,7 @@
 
         <!-- Spotify Login -->
         <section id="login-container" class="centered-section card-style">
-            <!-- Icon removed from H2 -->
-            <h2>Connect Your Spotify</h2>
+            <h2><span data-feather="spotify" class="icon"></span> Connect Your Spotify</h2>
             <p>Grant permission to analyze your playlists.</p>
             <button id="login-button" class="button-primary">
                 <span data-feather="log-in" class="icon button-icon"></span> Login with Spotify
@@ -193,24 +192,16 @@
                 </section>
 
                 <section id="similar-artists-container" class="feature-container animate-on-scroll">
-                    <!-- Title and description will be updated by JS -->
                     <h3><span data-feather="users" class="icon"></span> Discover Similar Artists (Last.fm)</h3>
                     <p>Find artists similar to the top ones in your playlist.</p>
-
-                    <!-- This div is now used for loading feedback during aggregate fetch -->
-                    <div id="similar-artists-buttons" class="button-container wrap-buttons hidden">
-                        <!-- Loading message will appear here -->
+                    <div id="similar-artists-buttons" class="button-container wrap-buttons">
+                        <p class="small-text">Loading top artists...</p>
                     </div>
-
-                    <!-- Results panel remains the same structure -->
                     <div id="similar-artists-results" class="results-panel hidden">
-                        <!-- Title removed, handled by section title above -->
-                        <div id="similar-artists-list" class="results-grid">
-                            <!-- Ranked recommendations will appear here -->
-                        </div>
+                        <h4>Artists Similar to '<span id="selected-artist-similar"></span>'</h4>
+                        <div id="similar-artists-list" class="results-grid"></div>
                     </div>
                 </section>
-
 
                  <section id="track-genres-container" class="feature-container animate-on-scroll">
                     <h3><span data-feather="list" class="icon"></span> Playlist Tracks</h3>
