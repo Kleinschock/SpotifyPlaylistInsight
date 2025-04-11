@@ -192,16 +192,24 @@
                 </section>
 
                 <section id="similar-artists-container" class="feature-container animate-on-scroll">
+                    <!-- Title and description will be updated by JS -->
                     <h3><span data-feather="users" class="icon"></span> Discover Similar Artists (Last.fm)</h3>
                     <p>Find artists similar to the top ones in your playlist.</p>
-                    <div id="similar-artists-buttons" class="button-container wrap-buttons">
-                        <p class="small-text">Loading top artists...</p>
+
+                    <!-- This div is now used for loading feedback during aggregate fetch -->
+                    <div id="similar-artists-buttons" class="button-container wrap-buttons hidden">
+                        <!-- Loading message will appear here -->
                     </div>
+
+                    <!-- Results panel remains the same structure -->
                     <div id="similar-artists-results" class="results-panel hidden">
-                        <h4>Artists Similar to '<span id="selected-artist-similar"></span>'</h4>
-                        <div id="similar-artists-list" class="results-grid"></div>
+                        <!-- Title removed, handled by section title above -->
+                        <div id="similar-artists-list" class="results-grid">
+                            <!-- Ranked recommendations will appear here -->
+                        </div>
                     </div>
                 </section>
+
 
                  <section id="track-genres-container" class="feature-container animate-on-scroll">
                     <h3><span data-feather="list" class="icon"></span> Playlist Tracks</h3>
