@@ -42,10 +42,10 @@ const genreSourceButtons = document.querySelectorAll('.toggle-button[data-source
 const trackGenreSourceRadios = document.querySelectorAll('input[name="trackGenreSource"]');
 
 // Specific Feature Elements
-const similarArtistsContainer = document.getElementById('similar-artists-container'); // Container for the whole section
-const similarArtistsButtonsPlaceholder = document.getElementById('similar-artists-buttons'); // Placeholder for loading text
-const similarArtistsResultsPanel = document.getElementById('similar-artists-results'); // Panel for results
-const similarArtistsListDiv = document.getElementById('similar-artists-list'); // The list div
+const similarArtistsContainer = document.getElementById('similar-artists-container');
+const similarArtistsButtonsPlaceholder = document.getElementById('similar-artists-buttons');
+const similarArtistsResultsPanel = document.getElementById('similar-artists-results');
+const similarArtistsListDiv = document.getElementById('similar-artists-list');
 
 const genreRadioButtonsContainer = document.getElementById('genre-radio-buttons');
 const genreRadioResultsPanel = document.getElementById('genre-radio-results');
@@ -98,11 +98,10 @@ function showSkeletonLoader(show) {
     } else {
         resultsSkeletonLoader.classList.add('hidden');
         resultsActualContent.classList.remove('hidden');
-        // Defer icon replacement and observer setup slightly to ensure elements are rendered
         setTimeout(() => {
             replaceFeatherIcons();
             setupIntersectionObserver();
-        }, 100); // Increased delay slightly
+        }, 100);
     }
 }
 
@@ -111,10 +110,7 @@ function updateFooterYear() {
     if (yearEl) yearEl.textContent = new Date().getFullYear();
 }
 
-// Simplified showLoading for intermediate steps (e.g., API calls within analysis)
 function showLoading(show, message = "Processing...") {
-    // This function can update a dedicated small loading indicator if needed,
-    // but for now, just logs to console during background API calls.
     if (show) {
         console.log("Loading:", message);
     } else {
@@ -159,35 +155,30 @@ function handleAuthentication() {
         const expires_in = tokenFromUrl.expires_in;
         sessionStorage.setItem('spotify_access_token', spotifyAccessToken);
         sessionStorage.setItem('spotify_token_expiry', Date.now() + expires_in * 1000);
-        console.log("Spotify Access Token obtained and stored.");
-        // Clear the hash from the URL
         history.pushState("", document.title, window.location.pathname + window.location.search);
     } else if (tokenFromStorage && expiryTime && Date.now() < expiryTime) {
         spotifyAccessToken = tokenFromStorage;
-        console.log("Using stored Spotify Access Token.");
     } else {
         sessionStorage.removeItem('spotify_access_token');
         sessionStorage.removeItem('spotify_token_expiry');
         spotifyAccessToken = null;
-        console.log("No valid Spotify token found.");
     }
     updateLoginState();
-    // Ensure initial overlay hides AFTER checking token
     if(initialLoadingOverlay) initialLoadingOverlay.classList.add('hidden');
 }
 function updateLoginState() {
      if (spotifyAccessToken) {
         loginContainer.classList.add('hidden');
         playlistContainer.classList.remove('hidden');
-        instructionsSection.classList.remove('hidden'); // Show instructions after login check
-        setTimeout(setupIntersectionObserver, 50); // Setup animations for newly shown elements
+        instructionsSection.classList.remove('hidden');
+        setTimeout(setupIntersectionObserver, 50);
     } else {
         loginContainer.classList.remove('hidden');
         playlistContainer.classList.add('hidden');
-        instructionsSection.classList.remove('hidden'); // Show instructions if not logged in too
-        resultsContainer.classList.add('hidden'); // Ensure results are hidden
+        instructionsSection.classList.remove('hidden');
+        resultsContainer.classList.add('hidden');
     }
-     replaceFeatherIcons(); // Make sure icons render correctly on state change
+     replaceFeatherIcons();
 }
 function redirectToSpotifyLogin() {
     const scope = 'playlist-read-private playlist-read-collaborative';
@@ -209,10 +200,9 @@ function getAccessTokenFromUrl() {
     const storedState = sessionStorage.getItem('spotify_auth_state');
     const expires_in = params.get('expires_in');
     if (token && state && state === storedState && expires_in) {
-        sessionStorage.removeItem('spotify_auth_state'); // Clean up state
+        sessionStorage.removeItem('spotify_auth_state');
         return { token, expires_in: parseInt(expires_in, 10) };
     }
-    // Clear hash if it doesn't contain a valid token response
     if (window.location.hash) {
          history.pushState("", document.title, window.location.pathname + window.location.search);
     }
@@ -223,55 +213,44 @@ function logout() {
     sessionStorage.removeItem('spotify_access_token');
     sessionStorage.removeItem('spotify_token_expiry');
     updateLoginState();
-    console.log("User logged out.");
-    // Optionally redirect to home or clear results
     resultsContainer.classList.add('hidden');
-    playlistInput.value = ''; // Clear input field
+    playlistInput.value = '';
 }
 
 // --- API Fetching ---
 async function fetchSpotifyAPI(endpoint, method = 'GET', body = null) {
     if (!spotifyAccessToken) {
-        console.error('Spotify Access Token is missing or expired.');
         showError("Authentication required. Please log in again.");
-        logout(); // Force logout if token is missing during API call
+        logout();
         return null;
     }
     const url = `https://api.spotify.com/v1/${endpoint}`;
     try {
         const response = await fetch(url, {
             method,
-            headers: {
-                'Authorization': `Bearer ${spotifyAccessToken}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${spotifyAccessToken}`, 'Content-Type': 'application/json' },
             body: body ? JSON.stringify(body) : null
         });
         if (response.status === 401) {
-            console.error('Spotify API returned 401 (Unauthorized). Token likely expired.');
             showError("Your session has expired. Please log in again.");
-            logout(); // Force logout on 401
+            logout();
             return null;
         }
         if (response.status === 429) {
-             console.warn('Spotify API rate limit hit (429). Retrying after delay...');
              const retryAfterSeconds = parseInt(response.headers.get('Retry-After') || '5', 10);
              showError(`Rate limit hit. Retrying in ${retryAfterSeconds}s...`, true);
              await new Promise(resolve => setTimeout(resolve, retryAfterSeconds * 1000));
-             return fetchSpotifyAPI(endpoint, method, body); // Retry the request
+             return fetchSpotifyAPI(endpoint, method, body);
         }
-        // Try parsing JSON even for errors, as Spotify often includes error details
-        const responseData = await response.json().catch(() => null); // Avoid crash if body is not JSON
+        const responseData = await response.json().catch(() => null);
 
         if (!response.ok) {
             const errorMessage = responseData?.error?.message || response.statusText || `HTTP Error ${response.status}`;
-            console.error(`Spotify API Error ${response.status}: ${errorMessage}`, responseData);
             showError(`Spotify Error: ${errorMessage}`);
-            return null; // Return null for non-successful responses
+            return null;
         }
         return responseData;
     } catch (error) {
-        console.error('Network error fetching Spotify API:', error);
         showError("Network error connecting to Spotify. Please check your connection.");
         return null;
     }
@@ -283,7 +262,7 @@ async function lastFmRateLimiter() {
         const delayNeeded = LASTFM_API_DELAY - timeSinceLastCall;
         await new Promise(resolve => setTimeout(resolve, delayNeeded));
     }
-    lastFmApiCallTimestamp = Date.now(); // Update timestamp *after* potential delay
+    lastFmApiCallTimestamp = Date.now();
 }
 async function fetchLastFmAPI(params) {
     params.api_key = LASTFM_API_KEY;
@@ -291,14 +270,14 @@ async function fetchLastFmAPI(params) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${LASTFM_API_BASE_URL}?${queryString}`;
 
-    await lastFmRateLimiter(); // Ensure rate limiting before fetch
+    await lastFmRateLimiter();
 
     try {
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.error) {
-            if (data.error !== 6) { // Error 6 ("Artist not found", etc.) is common and not critical
+            if (data.error !== 6) {
                  console.error(`Last.fm API Error ${data.error}: ${data.message}`, params);
                  showError(`Last.fm Error (${params.method}): ${data.message}`, true);
             } else {
@@ -307,13 +286,11 @@ async function fetchLastFmAPI(params) {
             return null;
         }
         if (!response.ok) {
-             console.error(`Last.fm HTTP Error ${response.status}: ${response.statusText}`, params);
              showError(`Last.fm Error: ${response.statusText || 'Unknown error'}`, true);
              return null;
         }
         return data;
     } catch (error) {
-        console.error('Network error fetching Last.fm API:', error);
         showError("Network error connecting to Last.fm. Please check your connection.", true);
         return null;
     }
@@ -337,7 +314,6 @@ function extractPlaylistId(input) {
             return input;
         }
     } catch (e) {
-        console.error("Error parsing playlist input:", e);
         showError("Could not parse the provided playlist input. Please use a valid URL or ID.");
     }
     return null;
@@ -345,41 +321,31 @@ function extractPlaylistId(input) {
 async function getPlaylistTracks(playlistId) {
     let tracks = [];
     let url = `playlists/${playlistId}/tracks?fields=items(track(id,name,duration_ms,explicit,popularity,external_urls(spotify),artists(id,name),album(id,name,release_date,release_date_precision,images))),next&limit=50`;
-    let trackCount = 0;
     const maxTracks = 1000;
 
     showLoading(true, "Fetching playlist tracks...");
     let page = 1;
 
-    while (url && trackCount < maxTracks) {
+    while (url && tracks.length < maxTracks) {
         showLoading(true, `Fetching track page ${page}...`);
         const data = await fetchSpotifyAPI(url);
         if (!data) {
              showError("Failed to fetch tracks (authentication issue or API error). Analysis stopped.");
              return null;
         }
-        if (!data.items || data.items.length === 0) {
-            break;
-        }
+        if (!data.items || data.items.length === 0) break;
 
         const validItems = data.items.filter(item => item && item.track && item.track.id);
         tracks = tracks.concat(validItems);
-        trackCount = tracks.length;
-
-        console.log(`Fetched ${trackCount} tracks so far...`);
-
         url = data.next ? data.next.replace('https://api.spotify.com/v1/', '') : null;
         page++;
-
         if (url) await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    if (trackCount >= maxTracks) {
-        console.warn(`Reached track limit of ${maxTracks}. Analyzing the first ${maxTracks} tracks.`);
+    if (tracks.length >= maxTracks) {
         showError(`Playlist contains more than ${maxTracks} tracks. Analysis limited to the first ${maxTracks}.`, true);
     }
 
-    console.log(`Finished fetching. Total valid tracks: ${trackCount}`);
     showLoading(false);
     return tracks;
 }
@@ -391,13 +357,11 @@ async function getArtistDetailsAndGenres(artistIds) {
 
     console.log(`Fetching details for ${totalArtists} unique artists...`);
 
-    showLoading(true, `Fetching Spotify details (batch 1)...`);
+    showLoading(true, `Fetching Spotify details...`);
     for (let i = 0; i < totalArtists; i += batchSize) {
         const batchIds = uniqueArtistIds.slice(i, i + batchSize);
         const endpoint = `artists?ids=${batchIds.join(',')}`;
-        showLoading(true, `Fetching Spotify batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalArtists / batchSize)}...`);
         const data = await fetchSpotifyAPI(endpoint);
-
         if (data?.artists) {
             data.artists.forEach(artist => {
                 if (artist) {
@@ -410,51 +374,30 @@ async function getArtistDetailsAndGenres(artistIds) {
                     };
                 }
             });
-        } else if (!data && !spotifyAccessToken) {
-             return null;
-        }
+        } else if (!data && !spotifyAccessToken) return null;
         if (i + batchSize < totalArtists) await new Promise(resolve => setTimeout(resolve, 50));
     }
-     console.log("Fetched Spotify artist details.");
 
-    showLoading(true, `Fetching Last.fm tags (0/${totalArtists})...`);
-    let lastfmFetchedCount = 0;
+    showLoading(true, `Fetching Last.fm tags...`);
     for (const artistId of uniqueArtistIds) {
-        if (!artistDetails[artistId] || !artistDetails[artistId].name) {
-            lastfmFetchedCount++;
-            continue;
-        }
+        if (!artistDetails[artistId] || !artistDetails[artistId].name) continue;
         const artistName = artistDetails[artistId].name;
         const params = { method: 'artist.gettoptags', artist: artistName, autocorrect: 1 };
         const lastfmData = await fetchLastFmAPI(params);
-
         if (lastfmData?.toptags?.tag) {
              const tags = Array.isArray(lastfmData.toptags.tag) ? lastfmData.toptags.tag : [lastfmData.toptags.tag];
-             artistDetails[artistId].lastFmTags = tags
-                .slice(0, 10)
-                .map(tag => tag.name.toLowerCase().trim())
-                .filter(Boolean);
-        }
-        lastfmFetchedCount++;
-        if (lastfmFetchedCount % 10 === 0 || lastfmFetchedCount === totalArtists) {
-            showLoading(true, `Fetching Last.fm tags (${lastfmFetchedCount}/${totalArtists})...`);
+             artistDetails[artistId].lastFmTags = tags.slice(0, 10).map(tag => tag.name.toLowerCase().trim()).filter(Boolean);
         }
     }
-    console.log("Finished fetching Last.fm tags.");
     showLoading(false);
     return artistDetails;
 }
 function processPlaylistData(playlistInfo, tracks, artistDetails) {
-    if (!tracks || tracks.length === 0) {
-        console.warn("No tracks provided to processPlaylistData");
-        return {};
-    }
+    if (!tracks || tracks.length === 0) return {};
+    
     const processedTracks = tracks.map(item => {
         const track = item.track;
-        if (!track || !track.id || !track.artists || track.artists.length === 0 || !track.album) {
-            console.warn("Skipping invalid track item:", item);
-            return null;
-        }
+        if (!track || !track.id || !track.artists || track.artists.length === 0 || !track.album) return null;
 
         let trackSpotifyGenres = new Set();
         let trackLastFmTags = new Set();
@@ -470,33 +413,17 @@ function processPlaylistData(playlistInfo, tracks, artistDetails) {
         const releaseDate = track.album.release_date;
         let releaseYear = null;
         if (releaseDate) {
-            if (track.album.release_date_precision === 'year') {
-                releaseYear = parseInt(releaseDate, 10);
-            } else {
-                releaseYear = parseInt(releaseDate.substring(0, 4), 10);
-            }
-            if (isNaN(releaseYear) || releaseYear < 1900 || releaseYear > new Date().getFullYear() + 2) {
-                releaseYear = null;
-            }
+            releaseYear = parseInt(releaseDate.substring(0, 4), 10);
+            if (isNaN(releaseYear) || releaseYear < 1900 || releaseYear > new Date().getFullYear() + 2) releaseYear = null;
         }
 
-        const imageUrl = track.album.images?.find(img => img.width >= 50 && img.width <= 300)?.url
-                       || track.album.images?.[1]?.url
-                       || track.album.images?.[0]?.url
-                       || null;
+        const imageUrl = track.album.images?.find(img => img.width >= 50 && img.width <= 300)?.url || track.album.images?.[1]?.url || track.album.images?.[0]?.url || null;
 
         return {
-            id: track.id,
-            title: track.name,
-            artist: track.artists.map(a => a.name).join(', '),
+            id: track.id, title: track.name, artist: track.artists.map(a => a.name).join(', '),
             primaryArtistName: primaryArtistDetails?.name || track.artists[0].name,
-            album: track.album.name,
-            imageUrl: imageUrl,
-            spotifyUrl: track.external_urls?.spotify,
-            releaseYear: releaseYear,
-            durationMs: track.duration_ms,
-            explicit: track.explicit,
-            popularity: track.popularity,
+            album: track.album.name, imageUrl, spotifyUrl: track.external_urls?.spotify, releaseYear,
+            durationMs: track.duration_ms, explicit: track.explicit, popularity: track.popularity,
             spotifyGenres: [...trackSpotifyGenres].filter(Boolean).sort(),
             lastFmTags: [...trackLastFmTags].filter(Boolean).sort()
         };
@@ -508,19 +435,17 @@ function processPlaylistData(playlistInfo, tracks, artistDetails) {
     const uniqueArtistNames = new Set(processedTracks.map(t => t.primaryArtistName));
 
     return {
-        id: playlistInfo.id,
-        name: playlistInfo.name,
+        id: playlistInfo.id, name: playlistInfo.name,
         description: playlistInfo.description?.replace(/<[^>]*>?/gm, ''),
         imageUrl: playlistInfo.images?.length ? playlistInfo.images[0].url : null,
         owner: playlistInfo.owner?.display_name || 'Unknown Owner',
-        spotifyUrl: playlistInfo.external_urls?.spotify,
-        tracks: processedTracks,
+        spotifyUrl: playlistInfo.external_urls?.spotify, tracks: processedTracks,
         stats: {
             totalTracks: processedTracks.length,
             totalDurationFormatted: `${totalMinutes}m ${totalSeconds}s`,
             uniqueArtists: uniqueArtistNames.size,
         },
-        artistDetails: artistDetails
+        artistDetails
     };
 }
 
@@ -536,13 +461,10 @@ function displayPlaylistInfo(playlistData) {
             <p>By ${playlistData.owner || 'Unknown Owner'}</p>
             ${playlistData.description ? `<p class="description">${playlistData.description}</p>` : ''}
             ${playlistData.spotifyUrl ? `
-            <p>
-                <a href="${playlistData.spotifyUrl}" target="_blank" rel="noopener noreferrer" class="button-primary small">
-                    <span data-feather="external-link" class="icon button-icon"></span>View on Spotify
-                </a>
-            </p>` : ''}
-        </div>
-    `;
+            <p><a href="${playlistData.spotifyUrl}" target="_blank" rel="noopener noreferrer" class="button-primary small">
+                <span data-feather="external-link" class="icon button-icon"></span>View on Spotify
+            </a></p>` : ''}
+        </div>`;
     totalTracksEl.textContent = playlistData.stats?.totalTracks ?? '-';
     totalDurationEl.textContent = playlistData.stats?.totalDurationFormatted ?? '-';
     uniqueArtistsEl.textContent = playlistData.stats?.uniqueArtists ?? '-';
@@ -560,17 +482,12 @@ function getGenreCounts(tracks, source = 'spotify') {
     tracks.forEach(track => {
         if (track && Array.isArray(track[key])) {
             track[key].forEach(genre => {
-                if (genre) {
-                    genreCounts[genre] = (genreCounts[genre] || 0) + 1;
-                }
+                if (genre) genreCounts[genre] = (genreCounts[genre] || 0) + 1;
             });
         }
     });
 
-    const sortedGenres = Object.entries(genreCounts)
-        .map(([genre, count]) => ({ genre, count }))
-        .sort((a, b) => b.count - a.count);
-
+    const sortedGenres = Object.entries(genreCounts).map(([genre, count]) => ({ genre, count })).sort((a, b) => b.count - a.count);
     uniqueGenresEl.textContent = sortedGenres.length;
     return sortedGenres;
 }
@@ -578,44 +495,25 @@ function getGenreCounts(tracks, source = 'spotify') {
 // --- Chart Rendering ---
 function createOrUpdateChart(chartId, chartType, data, options, instanceKey) {
     const ctx = document.getElementById(chartId)?.getContext('2d');
-    if (!ctx) {
-        console.error(`Canvas context for ID '${chartId}' not found.`);
-        return;
-    }
-
-    if (chartInstances[instanceKey]) {
-        try {
-            chartInstances[instanceKey].destroy();
-        } catch (e) {
-            console.error(`Error destroying chart '${instanceKey}':`, e);
-        }
-        chartInstances[instanceKey] = null;
-    }
-
+    if (!ctx) return;
+    if (chartInstances[instanceKey]) chartInstances[instanceKey].destroy();
     try {
         chartInstances[instanceKey] = new Chart(ctx, { type: chartType, data, options });
     } catch (e) {
-        console.error(`Error creating chart '${instanceKey}':`, e);
         showError(`Could not render the ${instanceKey} chart.`);
     }
 }
 function handleChartClick(event, elements, labels) {
      if (elements && elements.length > 0) {
         try {
-            const index = elements[0].index;
-            const genre = labels[index];
-            if (genre) {
-                console.log(`Chart clicked: Filtering by genre '${genre}'`);
-                filterTracksByGenre(genre);
-            }
-        } catch (e) {
-            console.error("Error handling chart click:", e);
-        }
+            const genre = labels[elements[0].index];
+            if (genre) filterTracksByGenre(genre);
+        } catch (e) { console.error("Error handling chart click:", e); }
     }
 }
 function createReleaseYearChart(tracks) {
      if (!tracks || tracks.length === 0) {
-         if (chartInstances.year) { chartInstances.year.destroy(); chartInstances.year = null; }
+         if (chartInstances.year) chartInstances.year.destroy();
          document.getElementById('release-year-chart').style.display = 'none';
          document.getElementById('release-year-container').querySelector('.chart-tip').textContent = 'No release year data available.';
         return;
@@ -624,9 +522,7 @@ function createReleaseYearChart(tracks) {
     document.getElementById('release-year-container').querySelector('.chart-tip').textContent = 'Track count by year of release';
 
      const yearCounts = {};
-     let minYear = Infinity, maxYear = -Infinity;
-     let validYearCount = 0;
-
+     let minYear = Infinity, maxYear = -Infinity, validYearCount = 0;
      tracks.forEach(track => {
          if (track && typeof track.releaseYear === 'number' && track.releaseYear >= 1900 && track.releaseYear <= new Date().getFullYear() + 1) {
              yearCounts[track.releaseYear] = (yearCounts[track.releaseYear] || 0) + 1;
@@ -637,43 +533,23 @@ function createReleaseYearChart(tracks) {
      });
 
      if (validYearCount === 0) {
-         if (chartInstances.year) { chartInstances.year.destroy(); chartInstances.year = null; }
+         if (chartInstances.year) chartInstances.year.destroy();
          document.getElementById('release-year-chart').style.display = 'none';
          document.getElementById('release-year-container').querySelector('.chart-tip').textContent = 'No valid release year data found.';
          return;
      }
 
-     const labels = [];
-     const data = [];
-     for (let year = minYear; year <= maxYear; year++) {
-         labels.push(year.toString());
-         data.push(yearCounts[year] || 0);
-     }
+     const labels = Array.from({length: maxYear - minYear + 1}, (_, i) => (minYear + i).toString());
+     const data = labels.map(year => yearCounts[year] || 0);
 
-     const chartData = {
-         labels,
-         datasets: [{
-             label: 'Tracks Released',
-             data,
-             borderColor: 'rgba(79, 70, 229, 0.8)',
-             backgroundColor: 'rgba(79, 70, 229, 0.1)',
-             fill: true,
-             tension: 0.3,
-             pointRadius: 2,
-             pointHoverRadius: 5
-         }]
-     };
+     const chartData = { labels, datasets: [{
+        label: 'Tracks Released', data, borderColor: 'rgba(79, 70, 229, 0.8)',
+        backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 5
+     }]};
      const chartOptions = {
-         responsive: true,
-         maintainAspectRatio: false,
-         scales: {
-             x: { title: { display: false }, grid: { display: false } },
-             y: { beginAtZero: true, title: { display: false }, grid: { color: '#eee' } }
-         },
-         plugins: {
-             legend: { display: false },
-             tooltip: { mode: 'index', intersect: false }
-         }
+         responsive: true, maintainAspectRatio: false,
+         scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#eee' } } },
+         plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
      };
      createOrUpdateChart('release-year-chart', 'line', chartData, chartOptions, 'year');
 }
@@ -683,8 +559,8 @@ const debouncedUpdateCharts = debounce((genreData) => {
     const pieCanvas = document.getElementById('genre-pie-chart');
     const barCanvas = document.getElementById('genre-bar-chart');
 
-    if (chartInstances.pie) { chartInstances.pie.destroy(); chartInstances.pie = null; }
-    if (chartInstances.bar) { chartInstances.bar.destroy(); chartInstances.bar = null; }
+    if (chartInstances.pie) chartInstances.pie.destroy();
+    if (chartInstances.bar) chartInstances.bar.destroy();
 
     if (!genreData || genreData.length === 0) {
         pieChartTitle.textContent = `Genre Distribution (${sourceName} - No Data)`;
@@ -704,50 +580,20 @@ const debouncedUpdateCharts = debounce((genreData) => {
     const counts = topGenres.map(g => g.count);
     const backgroundColors = generateConsistentColors(labels);
 
-    const pieData = {
-        labels,
-        datasets: [{
-            data: counts,
-            backgroundColor: backgroundColors,
-            borderColor: '#ffffff',
-            borderWidth: 1
-        }]
-    };
-    const pieOptions = {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'right', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const total = context.chart.getDatasetMeta(0).total;
-                        const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) + '%' : '0%';
-                        return `${context.label}: ${context.raw} (${percentage})`;
-                    }
-                }
-            }
+    const pieData = { labels, datasets: [{ data: counts, backgroundColor: backgroundColors, borderColor: '#ffffff', borderWidth: 1 }] };
+    const pieOptions = { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
+            tooltip: { callbacks: { label: (c) => `${c.label}: ${c.raw} (${((c.raw / c.chart.getDatasetMeta(0).total) * 100).toFixed(1)}%)` } }
         },
         onClick: (e, elements) => handleChartClick(e, elements, labels)
     };
     createOrUpdateChart('genre-pie-chart', 'pie', pieData, pieOptions, 'pie');
     pieChartTitle.textContent = `Genre Distribution (${sourceName})`;
 
-    const barData = {
-        labels,
-        datasets: [{
-            label: 'Track Count', data: counts, backgroundColor: backgroundColors, borderWidth: 0
-        }]
-    };
-    const barOptions = {
-        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: (context) => `${context.raw} tracks` } }
-        },
-        scales: {
-            x: { beginAtZero: true, grid: { display: false } },
-            y: { grid: { display: false } }
-        },
+    const barData = { labels, datasets: [{ label: 'Track Count', data: counts, backgroundColor: backgroundColors, borderWidth: 0 }] };
+    const barOptions = { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.raw} tracks` } } },
+        scales: { x: { beginAtZero: true, grid: { display: false } }, y: { grid: { display: false } } },
         onClick: (e, elements) => handleChartClick(e, elements, labels)
     };
     createOrUpdateChart('genre-bar-chart', 'bar', barData, barOptions, 'bar');
@@ -759,37 +605,27 @@ function displayTopArtists(tracks, artistDetails) {
     const artistChartCanvas = document.getElementById('top-artists-chart');
     const artistListDiv = topArtistsListContainer;
 
-    if (chartInstances.artists) { chartInstances.artists.destroy(); chartInstances.artists = null;}
-    if (artistListDiv) artistListDiv.innerHTML = '<p class="small-text">Calculating top artists...</p>';
-    if (topArtistCountEl) topArtistCountEl.textContent = '0';
+    if (chartInstances.artists) chartInstances.artists.destroy();
+    artistListDiv.innerHTML = '<p class="small-text">Calculating...</p>';
+    topArtistCountEl.textContent = '0';
     if (artistChartCanvas) artistChartCanvas.style.display = 'none';
 
     if (!tracks || tracks.length === 0 || !artistDetails) {
-        if (artistListDiv) artistListDiv.innerHTML = '<p class="small-text">No artist data available to display.</p>';
+        artistListDiv.innerHTML = '<p class="small-text">No artist data available.</p>';
         return [];
     }
 
     const artistCounts = {};
     tracks.forEach(track => {
-        if (track && track.primaryArtistName) {
-            artistCounts[track.primaryArtistName] = (artistCounts[track.primaryArtistName] || 0) + 1;
-        }
+        if (track && track.primaryArtistName) artistCounts[track.primaryArtistName] = (artistCounts[track.primaryArtistName] || 0) + 1;
     });
 
-    const sortedArtists = Object.entries(artistCounts)
-        .map(([name, count]) => {
-            const details = Object.values(artistDetails).find(d => d && d.name === name);
-            return { name, count, details };
-        })
-        .sort((a, b) => b.count - a.count);
-
-    const topN = 10;
-    const topArtistsForDisplay = sortedArtists.slice(0, topN);
-
-    if (topArtistCountEl) topArtistCountEl.textContent = topArtistsForDisplay.length;
+    const sortedArtists = Object.entries(artistCounts).map(([name, count]) => ({ name, count, details: Object.values(artistDetails).find(d => d && d.name === name) })).sort((a, b) => b.count - a.count);
+    const topArtistsForDisplay = sortedArtists.slice(0, 10);
+    topArtistCountEl.textContent = topArtistsForDisplay.length;
 
     if (topArtistsForDisplay.length === 0) {
-        if (artistListDiv) artistListDiv.innerHTML = '<p class="small-text">No top artists found in this playlist.</p>';
+        artistListDiv.innerHTML = '<p class="small-text">No top artists found.</p>';
         return sortedArtists;
     }
 
@@ -797,46 +633,28 @@ function displayTopArtists(tracks, artistDetails) {
     const chartLabels = topArtistsForDisplay.map(a => a.name);
     const chartData = topArtistsForDisplay.map(a => a.count);
     const chartColors = generateConsistentColors(chartLabels);
-    const doughnutData = {
-        labels: chartLabels,
-        datasets: [{
-            label: 'Track Appearances', data: chartData, backgroundColor: chartColors, borderColor: '#ffffff', borderWidth: 2
-        }]
-    };
-    const doughnutOptions = {
-        responsive: true, maintainAspectRatio: false, cutout: '60%',
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: (context) => `${context.label}: ${context.raw} track${context.raw !== 1 ? 's' : ''}`
-                }
-            }
-        }
+    const doughnutData = { labels: chartLabels, datasets: [{ label: 'Track Appearances', data: chartData, backgroundColor: chartColors, borderColor: '#ffffff', borderWidth: 2 }] };
+    const doughnutOptions = { responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.label}: ${c.raw} track${c.raw !== 1 ? 's' : ''}` } } }
     };
     createOrUpdateChart('top-artists-chart', 'doughnut', doughnutData, doughnutOptions, 'artists');
 
-    if (artistListDiv) {
-        artistListDiv.innerHTML = '';
-        const fragment = document.createDocumentFragment();
-        topArtistsForDisplay.forEach(artist => {
-            const card = document.createElement('div');
-            card.className = 'artist-card animate-on-scroll';
-            const imageUrl = artist.details?.imageUrl;
-            const spotifyUrl = artist.details?.spotifyUrl;
-            const placeholderClass = imageUrl ? '' : 'artist-placeholder';
-
-            card.innerHTML = `
-                <img src="${imageUrl || 'placeholder.png'}" alt="${artist.name}" loading="lazy" class="${placeholderClass}" onerror="this.onerror=null;this.src='placeholder.png';">
-                <div class="artist-info">
-                    <h4>${spotifyUrl ? `<a href="${spotifyUrl}" target="_blank" rel="noopener noreferrer" title="View ${artist.name} on Spotify">${artist.name}</a>` : artist.name}</h4>
-                    <p>${artist.count} track${artist.count !== 1 ? 's' : ''}</p>
-                </div>
-            `;
-            fragment.appendChild(card);
-        });
-        artistListDiv.appendChild(fragment);
-    }
+    artistListDiv.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    topArtistsForDisplay.forEach(artist => {
+        const card = document.createElement('div');
+        card.className = 'artist-card animate-on-scroll';
+        const imageUrl = artist.details?.imageUrl;
+        const spotifyUrl = artist.details?.spotifyUrl;
+        card.innerHTML = `
+            <img src="${imageUrl || 'placeholder.png'}" alt="${artist.name}" loading="lazy" class="${imageUrl ? '' : 'artist-placeholder'}" onerror="this.onerror=null;this.src='placeholder.png';">
+            <div class="artist-info">
+                <h4>${spotifyUrl ? `<a href="${spotifyUrl}" target="_blank" rel="noopener noreferrer" title="View ${artist.name} on Spotify">${artist.name}</a>` : artist.name}</h4>
+                <p>${artist.count} track${artist.count !== 1 ? 's' : ''}</p>
+            </div>`;
+        fragment.appendChild(card);
+    });
+    artistListDiv.appendChild(fragment);
     return sortedArtists;
 }
 
@@ -850,37 +668,24 @@ function displayTrackList(tracks, filterGenre = null, genreSourceToShow = 'spoti
         const noticeDiv = document.createElement('div');
         noticeDiv.className = 'filter-notice';
         noticeDiv.innerHTML = `
-            <span>
-                <span data-feather="filter" class="icon"></span> Filtered by genre: <strong>${filterGenre}</strong>
-            </span>
-            <button id="clear-filter-btn" class="clear-filter-button">Clear Filter</button>
-        `;
+            <span><span data-feather="filter" class="icon"></span> Filtered by genre: <strong>${filterGenre}</strong></span>
+            <button id="clear-filter-btn" class="clear-filter-button">Clear Filter</button>`;
         filterNoticeContainer.appendChild(noticeDiv);
-        document.getElementById('clear-filter-btn').addEventListener('click', () => {
-            filterTracksByGenre(null);
-        });
-        replaceFeatherIcons();
     }
 
-    const tracksToDisplay = filterGenre
-        ? tracks.filter(track => {
-            const allGenres = new Set([...(track.spotifyGenres || []), ...(track.lastFmTags || [])]);
-            return allGenres.has(filterGenre);
-          })
-        : tracks;
+    const tracksToDisplay = filterGenre ? tracks.filter(track => new Set([...(track.spotifyGenres || []), ...(track.lastFmTags || [])]).has(filterGenre)) : tracks;
 
     if (!tracksToDisplay || tracksToDisplay.length === 0) {
-        trackGenresListDiv.innerHTML = `<p class="small-text centered-section">No tracks found${filterGenre ? ` matching the genre "${filterGenre}"` : ' in this playlist'}.</p>`;
+        trackGenresListDiv.innerHTML = `<p class="small-text centered-section">No tracks found${filterGenre ? ` matching the genre "${filterGenre}"` : ''}.</p>`;
         return;
     }
 
     const fragment = document.createDocumentFragment();
     tracksToDisplay.forEach(track => {
-        try { // FIX: Add try-catch for robust rendering of individual tracks
+        try {
             const trackCard = document.createElement('div');
             trackCard.className = 'track-card animate-on-scroll';
 
-            // FIX: Corrected logic for displaying genres
             const genresToShow = new Set();
             if (genreSourceToShow === 'spotify' || genreSourceToShow === 'both') {
                 track.spotifyGenres?.forEach(g => genresToShow.add({ genre: g, source: 'spotify' }));
@@ -891,89 +696,59 @@ function displayTrackList(tracks, filterGenre = null, genreSourceToShow = 'spoti
 
             const sortedGenres = [...genresToShow].sort((a, b) => a.genre.localeCompare(b.genre));
             const genresHtml = sortedGenres.length > 0
-                ? sortedGenres.map(item =>
-                    `<span class="track-genre genre-${item.source}" data-genre="${item.genre}" title="Filter by ${item.genre}">${item.genre}</span>`
-                  ).join('')
+                ? sortedGenres.map(item => `<span class="track-genre genre-${item.source}" data-genre="${item.genre.replace(/"/g, '"')}" title="Filter by ${item.genre}">${item.genre}</span>`).join('')
                 : '<span class="no-genres">No tags available</span>';
 
             trackCard.innerHTML = `
                 <img src="${track.imageUrl || 'placeholder.png'}" alt="${track.album || 'Album'}" loading="lazy" onerror="this.onerror=null;this.src='placeholder.png';">
                 <div class="track-info">
                     <div class="track-title" title="${track.title}${track.explicit ? ' (Explicit)' : ''}">
-                        ${track.title}
-                        ${track.explicit ? ' <span class="explicit-tag" title="Explicit">E</span>' : ''}
+                        ${track.title} ${track.explicit ? '<span class="explicit-tag" title="Explicit">E</span>' : ''}
                     </div>
                     <div class="track-artist">${track.artist}</div>
-                    <div class="track-album">${track.album} (${track.releaseYear || 'Year ?'})</div>
-                    ${track.spotifyUrl ? `
-                        <a href="${track.spotifyUrl}" target="_blank" rel="noopener noreferrer" class="spotify-link" title="Listen on Spotify">
-                            <span data-feather="play-circle" class="icon button-icon"></span>Listen
-                        </a>` : ''}
+                    <div class="track-album">${track.album} (${track.releaseYear || '?'})</div>
+                    ${track.spotifyUrl ? `<a href="${track.spotifyUrl}" target="_blank" rel="noopener noreferrer" class="spotify-link" title="Listen on Spotify">
+                        <span data-feather="play-circle" class="icon button-icon"></span>Listen
+                    </a>` : ''}
                     <div class="track-genres">${genresHtml}</div>
                 </div>`;
-
-            trackCard.querySelectorAll('.track-genre').forEach(tag => {
-                tag.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    filterTracksByGenre(tag.dataset.genre);
-                });
-            });
             fragment.appendChild(trackCard);
         } catch(e) {
-            console.error("Failed to render a track card. Skipping.", { trackData: track, error: e });
+            console.error("Failed to render a track card.", { trackData: track, error: e });
         }
     });
 
     trackGenresListDiv.appendChild(fragment);
     replaceFeatherIcons();
+    // **FIX**: Re-run the observer to make the newly rendered track cards visible.
+    setupIntersectionObserver();
 }
 function filterTracksByGenre(genre) {
     currentGenreFilter = genre;
-    console.log(`Filtering track list by genre: ${genre || 'None'}`);
-
     if (currentPlaylistData && currentPlaylistData.tracks) {
         displayTrackList(currentPlaylistData.tracks, currentGenreFilter, activeTrackGenreSource);
         const trackListSection = document.getElementById('track-genres-container');
         if (trackListSection) {
             trackListSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    } else {
-        console.warn("Cannot filter tracks: Playlist data is not available.");
     }
 }
 
 // --- Source Toggling Logic ---
 function updateActiveGenreSource(newSource) {
-     if (!currentPlaylistData || activeGenreSource === newSource) {
-         return;
-     }
+     if (!currentPlaylistData || activeGenreSource === newSource) return;
      activeGenreSource = newSource;
-     console.log(`Switching main genre source to: ${newSource}`);
-
-     genreSourceButtons.forEach(btn => {
-         btn.classList.toggle('active', btn.dataset.source === newSource);
-     });
-
+     genreSourceButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.source === newSource));
      if (currentPlaylistData.tracks) {
          const genreCounts = getGenreCounts(currentPlaylistData.tracks, activeGenreSource);
-         uniqueGenresEl.textContent = genreCounts.length;
          debouncedUpdateCharts(genreCounts);
-     } else {
-         uniqueGenresEl.textContent = '0';
-         debouncedUpdateCharts([]);
      }
 }
 function updateActiveTrackGenreSource(newSource) {
-    if (activeTrackGenreSource === newSource) {
-        return;
-    }
+    if (activeTrackGenreSource === newSource) return;
     activeTrackGenreSource = newSource;
-    console.log(`Switching track genre display source to: ${newSource}`);
-
     if (currentPlaylistData && currentPlaylistData.tracks) {
         displayTrackList(currentPlaylistData.tracks, currentGenreFilter, activeTrackGenreSource);
-    } else {
-        trackGenresListDiv.innerHTML = '<p class="small-text centered-section">Load a playlist to see tracks.</p>';
     }
 }
 
@@ -982,12 +757,10 @@ function populateGenreRadioButtons(topGenres) {
     genreRadioButtonsContainer.innerHTML = '';
     genreRadioResultsPanel.classList.add('hidden');
     genreRadioListDiv.innerHTML = '';
-
     if (!topGenres || topGenres.length === 0) {
-        genreRadioButtonsContainer.innerHTML = '<p class="small-text">No top genres identified for radio.</p>';
+        genreRadioButtonsContainer.innerHTML = '<p class="small-text">No top genres identified.</p>';
         return;
     }
-
     const fragment = document.createDocumentFragment();
     topGenres.forEach(({ genre }) => {
         const button = document.createElement('button');
@@ -1000,14 +773,12 @@ function populateGenreRadioButtons(topGenres) {
     genreRadioButtonsContainer.appendChild(fragment);
 }
 async function fetchAndDisplayTopTracksForGenre(genre) {
-    console.log(`Fetching top Last.fm tracks for genre: ${genre}`);
     showLoading(true, `Fetching top tracks for '${genre}'...`);
-    genreRadioListDiv.innerHTML = '<p class="small-text">Loading popular tracks...</p>';
+    genreRadioListDiv.innerHTML = '<p class="small-text">Loading...</p>';
     selectedGenreRadioSpan.textContent = genre;
     genreRadioResultsPanel.classList.remove('hidden');
 
-    const params = { method: 'tag.gettoptracks', tag: genre, limit: 12 };
-    const data = await fetchLastFmAPI(params);
+    const data = await fetchLastFmAPI({ method: 'tag.gettoptracks', tag: genre, limit: 12 });
     showLoading(false);
 
     if (data?.tracks?.track && data.tracks.track.length > 0) {
@@ -1017,18 +788,16 @@ async function fetchAndDisplayTopTracksForGenre(genre) {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'lastfm-result-item animate-on-scroll';
             const spotifySearchUrl = `https://open.spotify.com/search/${encodeURIComponent(track.name)}%20artist%3A${encodeURIComponent(track.artist.name)}`;
-            const listeners = track.listeners ? parseInt(track.listeners, 10) : 0;
-
+            const listeners = parseInt(track.listeners, 10) || 0;
             itemDiv.innerHTML = `
-                <a href="${spotifySearchUrl}" target="_blank" rel="noopener noreferrer" title="Search '${track.name}' by ${track.artist.name} on Spotify">${track.name}</a>
+                <a href="${spotifySearchUrl}" target="_blank" rel="noopener noreferrer">${track.name}</a>
                 <span>by ${track.artist.name}</span>
-                ${listeners > 0 ? `<span><span data-feather="headphones" class="icon xs"></span> ${listeners.toLocaleString()} listeners</span>` : ''}
-            `;
+                ${listeners > 0 ? `<span><span data-feather="headphones" class="icon xs"></span> ${listeners.toLocaleString()} listeners</span>` : ''}`;
             fragment.appendChild(itemDiv);
         });
         genreRadioListDiv.appendChild(fragment);
     } else {
-        genreRadioListDiv.innerHTML = `<p class="small-text">Could not find popular tracks for "${genre}" on Last.fm.</p>`;
+        genreRadioListDiv.innerHTML = `<p class="small-text">Could not find popular tracks for "${genre}".</p>`;
     }
      replaceFeatherIcons();
      setupIntersectionObserver();
@@ -1037,81 +806,50 @@ async function fetchAndDisplayTopTracksForGenre(genre) {
 
 
 async function fetchAndDisplayAggregateRecommendations(topPlaylistArtists, allPlaylistArtistNamesLower) {
-    const numArtistsToQuery = Math.min(topPlaylistArtists.length, 10);
-    const artistsForQuery = topPlaylistArtists.slice(0, numArtistsToQuery);
-
+    const artistsForQuery = topPlaylistArtists.slice(0, 10);
     if (artistsForQuery.length === 0) {
         similarArtistsContainer.classList.add('hidden');
         return;
     }
 
-    console.log(`Starting aggregate recommendations based on top ${artistsForQuery.length} artists.`);
     similarArtistsContainer.classList.remove('hidden');
-
     const titleElement = similarArtistsContainer.querySelector('h3');
     const descElement = similarArtistsContainer.querySelector('p');
     if (titleElement) titleElement.innerHTML = `<span data-feather="thumbs-up" class="icon"></span> Recommended Artists`;
-    if (descElement) descElement.textContent = `Artists similar to your top ${artistsForQuery.length} playlist artists, ranked by recommendation frequency (excluding artists already in the playlist).`;
+    if (descElement) descElement.textContent = `Artists similar to your top ${artistsForQuery.length} playlist artists, ranked by recommendation frequency.`;
     replaceFeatherIcons();
 
     if (similarArtistsButtonsPlaceholder) {
         similarArtistsButtonsPlaceholder.classList.remove('hidden');
-        similarArtistsButtonsPlaceholder.innerHTML = `<p class="small-text">Analyzing recommendations based on your top ${artistsForQuery.length} artists...</p>`;
+        similarArtistsButtonsPlaceholder.innerHTML = `<p class="small-text">Analyzing recommendations...</p>`;
     }
 
     similarArtistsResultsPanel.classList.remove('hidden');
-    similarArtistsListDiv.innerHTML = '<div class="loader small"></div><p class="small-text">Fetching similar artists from Last.fm...</p>';
+    similarArtistsListDiv.innerHTML = '<div class="loader small"></div><p class="small-text">Fetching...</p>';
 
     const recommendations = {};
-    let fetchedCount = 0;
-    const totalToFetch = artistsForQuery.length;
-
-    showLoading(true, `Fetching similar artists (0/${totalToFetch})...`);
-
     for (const sourceArtist of artistsForQuery) {
         if (!sourceArtist || !sourceArtist.name) continue;
-
-        const params = { method: 'artist.getsimilar', artist: sourceArtist.name, autocorrect: 1, limit: 15 };
-        const data = await fetchLastFmAPI(params);
-        fetchedCount++;
-        showLoading(true, `Fetching similar artists (${fetchedCount}/${totalToFetch})...`);
-
-        if (similarArtistsButtonsPlaceholder) {
-            similarArtistsButtonsPlaceholder.innerHTML = `<p class="small-text">Analyzing recommendations... (${fetchedCount}/${totalToFetch} artists checked)</p>`;
-        }
-
+        const data = await fetchLastFmAPI({ method: 'artist.getsimilar', artist: sourceArtist.name, autocorrect: 1, limit: 15 });
         if (data?.similarartists?.artist && data.similarartists.artist.length > 0) {
             data.similarartists.artist.forEach(similar => {
                 if (!similar || !similar.name) return;
                 const nameLower = similar.name.toLowerCase().trim();
-                if (!nameLower || allPlaylistArtistNamesLower.has(nameLower)) {
-                    return;
-                }
-                if (!recommendations[nameLower]) {
-                    recommendations[nameLower] = { name: similar.name, count: 0, matchSum: 0 };
-                }
+                if (!nameLower || allPlaylistArtistNamesLower.has(nameLower)) return;
+                if (!recommendations[nameLower]) recommendations[nameLower] = { name: similar.name, count: 0, matchSum: 0 };
                 recommendations[nameLower].count++;
                 recommendations[nameLower].matchSum += parseFloat(similar.match || 0);
             });
         }
     }
-    showLoading(false);
 
-    if (similarArtistsButtonsPlaceholder) {
-         similarArtistsButtonsPlaceholder.classList.add('hidden');
-    }
+    if (similarArtistsButtonsPlaceholder) similarArtistsButtonsPlaceholder.classList.add('hidden');
 
     const rankedRecommendations = Object.values(recommendations)
-        .sort((a, b) => {
-            if (b.count !== a.count) return b.count - a.count;
-            const avgMatchA = a.count > 0 ? a.matchSum / a.count : 0;
-            const avgMatchB = b.count > 0 ? b.matchSum / b.count : 0;
-            return avgMatchB - avgMatchA;
-        })
+        .sort((a, b) => (b.count - a.count) || ((b.matchSum / b.count) - (a.matchSum / a.count)))
         .slice(0, 15);
 
     similarArtistsListDiv.innerHTML = '';
-
     if (rankedRecommendations.length > 0) {
         const fragment = document.createDocumentFragment();
         rankedRecommendations.forEach(rec => {
@@ -1120,15 +858,14 @@ async function fetchAndDisplayAggregateRecommendations(topPlaylistArtists, allPl
             const spotifySearchUrl = `https://open.spotify.com/search/artist%3A${encodeURIComponent(rec.name)}`;
             const avgMatch = rec.count > 0 ? Math.round((rec.matchSum / rec.count) * 100) : 0;
             itemDiv.innerHTML = `
-                 <a href="${spotifySearchUrl}" target="_blank" rel="noopener noreferrer" title="Search '${rec.name}' on Spotify">${rec.name}</a>
+                 <a href="${spotifySearchUrl}" target="_blank" rel="noopener noreferrer">${rec.name}</a>
                  <span><span data-feather="check-circle" class="icon xs"></span> Recommended ${rec.count} time${rec.count !== 1 ? 's' : ''}</span>
-                 ${avgMatch > 0 ? `<span><span data-feather="percent" class="icon xs"></span> Avg Match: ${avgMatch}%</span>` : ''}
-            `;
+                 ${avgMatch > 0 ? `<span><span data-feather="percent" class="icon xs"></span> Avg Match: ${avgMatch}%</span>` : ''}`;
             fragment.appendChild(itemDiv);
         });
         similarArtistsListDiv.appendChild(fragment);
     } else {
-        similarArtistsListDiv.innerHTML = `<p class="small-text">Could not find any new recommended artists based on your top playlist artists.</p>`;
+        similarArtistsListDiv.innerHTML = `<p class="small-text">Could not find any new recommended artists.</p>`;
     }
 
     replaceFeatherIcons();
@@ -1145,11 +882,8 @@ async function analyzePlaylist() {
         return;
     }
     const playlistId = extractPlaylistId(playlistInputVal);
-    if (!playlistId) {
-        return;
-    }
+    if (!playlistId) return;
 
-    console.log(`Starting analysis for playlist ID: ${playlistId}`);
     showSkeletonLoader(true);
     clearError();
     currentPlaylistData = null;
@@ -1159,28 +893,22 @@ async function analyzePlaylist() {
     genreRadioResultsPanel.classList.add('hidden');
     similarArtistsResultsPanel.classList.add('hidden');
     similarArtistsContainer.classList.add('hidden');
-    similarArtistsListDiv.innerHTML = '';
-    if (similarArtistsButtonsPlaceholder) similarArtistsButtonsPlaceholder.classList.add('hidden');
-
 
     try {
-        showLoading(true, "Fetching playlist details...");
         const playlistInfo = await fetchSpotifyAPI(`playlists/${playlistId}?fields=id,name,description,images,owner(display_name),external_urls,tracks(total)`);
         if (!playlistInfo) throw new Error("Could not fetch playlist details. Check URL/ID or login status.");
-        if (playlistInfo.tracks?.total === 0) throw new Error("This playlist appears to be empty. Cannot analyze.");
+        if (playlistInfo.tracks?.total === 0) throw new Error("This playlist is empty.");
 
         const tracksRaw = await getPlaylistTracks(playlistId);
-        if (!tracksRaw) throw new Error("Failed to fetch playlist tracks. Analysis stopped.");
-        if (tracksRaw.length === 0) throw new Error("Playlist tracks are empty or could not be retrieved.");
+        if (!tracksRaw || tracksRaw.length === 0) throw new Error("Could not retrieve playlist tracks.");
 
         const artistIds = [...new Set(tracksRaw.flatMap(item => item?.track?.artists?.map(a => a.id)).filter(Boolean))];
-        if (artistIds.length === 0) throw new Error("No valid artists found in the playlist tracks.");
-        const artistDetails = await getArtistDetailsAndGenres(artistIds);
-        if (!artistDetails) throw new Error("Failed to fetch artist details. Analysis stopped.");
+        if (artistIds.length === 0) throw new Error("No valid artists found.");
 
-        showLoading(true, "Processing data...");
+        const artistDetails = await getArtistDetailsAndGenres(artistIds);
+        if (!artistDetails) throw new Error("Failed to fetch artist details.");
+
         currentPlaylistData = processPlaylistData(playlistInfo, tracksRaw, artistDetails);
-        showLoading(false);
 
         displayPlaylistInfo(currentPlaylistData);
         const initialGenreCounts = getGenreCounts(currentPlaylistData.tracks, activeGenreSource);
@@ -1191,30 +919,20 @@ async function analyzePlaylist() {
 
         showSkeletonLoader(false);
 
-        if (allSortedArtists && allSortedArtists.length > 0 && currentPlaylistData?.tracks) {
-             const allPlaylistArtistNamesLower = new Set(
-                 currentPlaylistData.tracks.map(t => t.primaryArtistName.toLowerCase().trim())
-             );
+        if (allSortedArtists?.length > 0 && currentPlaylistData?.tracks) {
+             const allPlaylistArtistNamesLower = new Set(currentPlaylistData.tracks.map(t => t.primaryArtistName.toLowerCase().trim()));
              fetchAndDisplayAggregateRecommendations(allSortedArtists, allPlaylistArtistNamesLower);
         } else {
              similarArtistsContainer.classList.add('hidden');
-             console.log("Skipping aggregate recommendations (no top artists found or track data missing).");
         }
 
-        console.log("Playlist analysis complete.");
-        setTimeout(() => {
-             const resultsH2 = resultsContainer.querySelector('.section-title');
-             if (resultsH2) {
-                 resultsH2.scrollIntoView({ behavior: 'smooth', block: 'start' });
-             }
-        }, 200);
+        setTimeout(() => resultsContainer.querySelector('.section-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
 
     } catch (error) {
-        console.error("Playlist analysis pipeline failed:", error);
-        showError(`Analysis failed: ${error.message}. Please check the playlist URL/ID and try again.`);
+        console.error("Analysis pipeline failed:", error);
+        showError(`Analysis failed: ${error.message}`);
         showSkeletonLoader(false);
         resultsContainer.classList.add('hidden');
-        showLoading(false);
     }
 }
 
@@ -1225,17 +943,11 @@ function setupEventListeners() {
     analyzeButton.addEventListener('click', analyzePlaylist);
 
     genreSourceButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            updateActiveGenreSource(button.dataset.source);
-        });
+        button.addEventListener('click', () => updateActiveGenreSource(button.dataset.source));
     });
 
     trackGenreSourceRadios.forEach(radio => {
-        radio.addEventListener('change', () => {
-            if (radio.checked) {
-                updateActiveTrackGenreSource(radio.value);
-            }
-        });
+        radio.addEventListener('change', () => { if (radio.checked) updateActiveTrackGenreSource(radio.value); });
     });
 
     playlistInput.addEventListener('keypress', (event) => {
@@ -1246,11 +958,25 @@ function setupEventListeners() {
     });
 
     playlistInput.addEventListener('input', clearError);
+
+    // **FIX**: Use event delegation for dynamically created elements.
+    // This is more efficient and avoids memory leaks.
+    trackGenresListDiv.addEventListener('click', (event) => {
+        const genreTag = event.target.closest('.track-genre');
+        if (genreTag && genreTag.dataset.genre) {
+            filterTracksByGenre(genreTag.dataset.genre);
+        }
+    });
+
+    filterNoticeContainer.addEventListener('click', (event) => {
+        if (event.target.id === 'clear-filter-btn') {
+            filterTracksByGenre(null);
+        }
+    });
 }
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM Loaded. Initializing Playlist Visualizer ✨.");
     updateFooterYear();
     replaceFeatherIcons();
     handleAuthentication();
@@ -1258,30 +984,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector(`.toggle-button[data-source="${activeGenreSource}"]`)?.classList.add('active');
     const initialTrackGenreRadio = document.getElementById(`genre-toggle-${activeTrackGenreSource}`);
-    if (initialTrackGenreRadio) {
-        initialTrackGenreRadio.checked = true;
-    }
+    if (initialTrackGenreRadio) initialTrackGenreRadio.checked = true;
 });
 
 // --- Utility - Color Generation ---
 function simpleHash(str) {
     let hash = 5381;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) + hash) + char;
-        hash |= 0;
-    }
-    return Math.abs(hash);
+    for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    return Math.abs(hash | 0);
 }
-
 function generateConsistentColors(labels) {
-    const colors = [];
-    const saturation = 70;
-    const lightness = 55;
-
-    labels.forEach((label) => {
-        const hue = simpleHash(label) % 360;
-        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-    });
-    return colors;
+    return labels.map(label => `hsl(${simpleHash(label) % 360}, 70%, 55%)`);
 }
