@@ -4,7 +4,7 @@
 
 A web application that analyzes Spotify playlists and provides detailed genre distribution and statistics. This was a small side project developed for my own interest.
 
-![Analysis Results Overview](SpotifyInsight_ (2).png)
+![Analysis Results Overview](SpotifyInsight_%20(2).png)
 
 ## Features
 
@@ -13,21 +13,21 @@ Our tool provides a deep dive into your playlists with a variety of analytical f
 #### **Genre Distribution Visualization**
 Instantly see the makeup of your playlist with interactive pie and bar charts. Click on any slice or bar to filter the tracks by that specific genre.
 
-![Genre Distribution Charts](SpotifyInsight_ (4).png)
+![Genre Distribution Charts](SpotifyInsight_%20(6).png)
 
 #### **Interactive Track Listing & Filtering**
 Browse every track in your playlist. You can view genres from Spotify, Last.fm, or both. Clicking a genre tag or a section of the chart filters the list instantly.
 
 *   **Full Playlist View**
-    ![Full Playlist View](SpotifyInsight_ (5).png)
+    ![Full Playlist View](SpotifyInsight_%20(4).png)
 
 *   **Filtered by Genre ("britpop")**
-    ![Filtered Playlist View](SpotifyInsight_ (6).png)
+    ![Filtered Playlist View](SpotifyInsight_%20(3).png)
 
 #### **Recommended Artists**
 Discover new music based on your taste. The tool analyzes your top artists and recommends similar ones, ranked by how frequently they are suggested.
 
-![Recommended Artists](SpotifyInsight_ (5).png)
+![Recommended Artists](SpotifyInsight_%20(7).png)
 
 **Also includes:**
 - Release year analysis
