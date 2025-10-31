@@ -1,5 +1,7 @@
 # Spotify Playlist Insight
 
+**NOTE: I HAVE TO REGISTER YOU IN MY SPOTIFY API AS I JUST HAVE SMALL DEVELOPER ACCESS. WITHOUT ME REGISTERING YOU TO THE SYSTEM THIS WON'T WORK :)**
+
 A web application that analyzes Spotify playlists and provides detailed genre distribution and statistics. This was a small side project developed for my own interest.
 
 ## Features
